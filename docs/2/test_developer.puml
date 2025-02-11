@@ -1,0 +1,61 @@
+@startuml Test Developer Flow
+!theme plain
+skinparam activityFontSize 14
+|Test Developer|
+start
+:Define Test Contract;
+note right
+  Create new contract class inheriting from BaseContract
+  - Define input parameters schema
+  - Define output schema
+  - Define validation rules
+end note
+
+:Create Tool Adapter;
+note right
+  Create adapter inheriting from BaseToolAdapter
+  - Implement command building
+  - Implement result parsing
+  - Implement result validation
+end note
+
+:Define Test Configuration;
+note right
+  Create YAML test definition
+  - Specify tool
+  - Define parameters
+  - Set validation thresholds
+end note
+
+:Write Integration Tests;
+note right
+  Create tests to verify:
+  - Contract validation
+  - Adapter functionality
+  - End-to-end execution
+end note
+
+:Submit Pull Request;
+note right
+  - Contract implementation
+  - Adapter implementation
+  - Test definition
+  - Integration tests
+end note
+
+|System Admin|
+:Review Implementation;
+:Test in Development Environment;
+:Merge and Deploy;
+
+|Test Developer|
+:Document Usage;
+note right
+  Create documentation:
+  - Parameter descriptions
+  - Example configurations
+  - Expected results
+end note
+
+stop
+@enduml
