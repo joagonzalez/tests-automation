@@ -1,0 +1,80 @@
+@startuml Test Operator Flow
+!theme plain
+skinparam activityFontSize 14
+|Test Operator|
+start
+:Load Test Definition;
+note right
+  Select predefined test from
+  test_definitions.yaml
+end note
+
+:Configure Environment;
+note right
+  Update environments.yaml:
+  - Credentials
+  - Connectivity data
+end note
+
+:Execute Test Workflow;
+note right
+  Using CLI:
+  $ benchmark-runner run\
+  -env prod_cluster_a\
+  -suite network_tests
+end note
+
+|Isolated Environment|
+:Run Tests;
+:Store Results Locally;
+:Generate Results Package;
+
+|Test Operator|
+:Transfer Results Package;
+note right
+  Manual/scheduled transfer
+  of results package to
+  central system
+end note
+
+|Test Analyst|
+:Import Results;
+note right
+  Using CLI:
+  $ benchmark-analyzer import \
+    --package results.zip
+end note
+
+:Analyze Results;
+note right
+  Using analysis tools:
+  - View metrics
+  - Compare runs
+  - Check thresholds
+end note
+
+:Generate Reports;
+note right
+  Create:
+  - Performance trends
+  - Regression analysis
+  - Validation reports
+end note
+
+fork
+  :Share Reports;
+fork again
+  :Update Dashboards;
+end fork
+
+|Test Operator|
+:Review Results;
+if (Results OK?) then (yes)
+  :Mark Test Run as Successful;
+else (no)
+  :Flag for Investigation;
+  :Add Notes to Results;
+endif
+
+stop
+@enduml
