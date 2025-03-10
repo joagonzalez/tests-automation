@@ -513,6 +513,8 @@ environments:
       format: "sqlite"
 ```
 
+## Contracts and Validation
+
 This structure provides:
 - Clear test definitions
 - Strong data validation
@@ -522,3 +524,161 @@ This structure provides:
 - Extensible contract system
 
 The system can easily be extended with new test types by adding new contracts and tool adapters while maintaining consistent validation and results handling.
+
+```python
+# Example implementation of the contract system
+
+from pydantic import BaseModel, Field
+from typing import Dict, Optional
+import json
+
+class IperfResultSchema(BaseModel):
+    """Schema for iperf3 results"""
+    bits_per_second: float = Field(..., gt=0)
+    jitter_ms: float = Field(..., ge=0)
+    retransmits: int = Field(..., ge=0)
+    cpu_utilization_percent: Optional[float] = Field(None, ge=0, le=100)
+
+    class Config:
+        schema_extra = {
+            "examples": [{
+                "bits_per_second": 925.6e6,
+                "jitter_ms": 0.92,
+                "retransmits": 2,
+                "cpu_utilization_percent": 12.4
+            }]
+        }
+
+class IperfValidator:
+    """Business rules validator for iperf3 results"""
+    def __init__(self):
+        self.rules = {
+            "bits_per_second": {
+                "min": 100e6,  # 100 Mbps
+                "max": 10e9    # 10 Gbps
+            },
+            "jitter_ms": {
+                "min": 0,
+                "max": 50
+            },
+            "retransmits": {
+                "max": 1000
+            },
+            "cpu_utilization_percent": {
+                "max": 80
+            }
+        }
+
+    def validate(self, data: Dict) -> Dict:
+        validation_results = {
+            "status": "passed",
+            "checks": {}
+        }
+
+        for metric, rules in self.rules.items():
+            if metric not in data:
+                continue
+
+            value = data[metric]
+            check_result = "passed"
+
+            if "min" in rules and value < rules["min"]:
+                check_result = "failed"
+            if "max" in rules and value > rules["max"]:
+                check_result = "failed"
+
+            validation_results["checks"][f"{metric}_check"] = check_result
+            if check_result == "failed":
+                validation_results["status"] = "failed"
+
+        return validation_results
+
+class IperfAdapter:
+    """Adapter for iperf3 tool"""
+    def parse_output(self, raw_output: str) -> Dict:
+        # Parse raw iperf3 output
+        data = json.loads(raw_output)
+
+        # Extract end results
+        end_results = data["end"]["streams"][0]
+
+        # Transform to contract format
+        result = {
+            "bits_per_second": end_results["bits_per_second"],
+            "jitter_ms": end_results["jitter_ms"],
+            "retransmits": end_results["retransmits"],
+            "cpu_utilization_percent": data["end"]["cpu_utilization_percent"]
+        }
+
+        # Validate against schema
+        validated_data = IperfResultSchema(**result)
+
+        # Apply business rules
+        validator = IperfValidator()
+        validation_results = validator.validate(validated_data.dict())
+
+        # Return final result
+        return {
+            "test_id": "iperf_001",
+            "timestamp": "2024-02-20T10:30:00Z",
+            "metrics": validated_data.dict(),
+            "validation": validation_results
+        }
+
+# Usage example
+raw_output = '''
+{
+    "intervals": [{
+        "streams": [{
+            "bits_per_second": 934.8e6,
+            "retransmits": 0,
+            "jitter_ms": 0.89
+        }]
+    }],
+    "end": {
+        "streams": [{
+            "bits_per_second": 925.6e6,
+            "retransmits": 2,
+            "jitter_ms": 0.92
+        }],
+        "cpu_utilization_percent": 12.4
+    }
+}
+'''
+
+adapter = IperfAdapter()
+result = adapter.parse_output(raw_output)
+print(json.dumps(result, indent=2))
+```
+
+This example shows:
+
+1. **Data Flow**:
+   - Raw tool output → Schema validation → Business rules validation → Final result
+
+2. **Contract Components**:
+   - Schema definition (using Pydantic)
+   - Business rules validation
+   - Result transformation
+
+3. **Validation Levels**:
+   - Schema validation (types, ranges)
+   - Business rules (thresholds)
+   - Result structure
+
+4. **Benefits**:
+   - Type safety
+   - Consistent validation
+   - Clear documentation
+   - Extensible design
+
+The diagrams and code show how:
+- Raw tool output is transformed
+- Contracts enforce data structure
+- Validation rules are applied
+- Results are standardized
+
+This makes it easier for:
+- New test developers to understand requirements
+- Operators to trust results
+- Analysts to work with consistent data
