@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# Add to .gitignore
+artifacts/*.db
+artifacts/*.db-journal
+
 # Distribution / packaging
 .Python
 build/
