@@ -1,0 +1,76 @@
+@startuml Import Test Results Flow
+
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor User
+participant "CLI (import_results)" as CLI
+participant "ResultsValidator" as Validator
+participant "SchemaManager" as SchemaManager
+participant "TestResultsDB" as DB
+database "SQLite" as SQLite
+
+box "Schema Components" #LightBlue
+    participant "JSON Schema Files" as JSONSchema
+    participant "Python Schema" as PySchema
+end box
+
+User -> CLI: import-results command\nwith YAML files
+activate CLI
+
+CLI -> Validator: validate_environment_config()
+activate Validator
+Validator --> CLI: validated environment config
+deactivate Validator
+
+CLI -> PySchema: get_schema(test_type)
+activate PySchema
+PySchema --> CLI: test type schema
+deactivate PySchema
+
+CLI -> Validator: validate_benchmark_results()
+activate Validator
+Validator -> JSONSchema: dump schema definition for db
+
+Validator -> Validator: validate against schema
+Validator --> CLI: validation result
+deactivate Validator
+
+CLI -> SchemaManager: load_schema(test_type)
+activate SchemaManager
+SchemaManager -> JSONSchema: read schema file
+activate JSONSchema
+JSONSchema --> SchemaManager: schema definition
+deactivate JSONSchema
+SchemaManager -> SchemaManager: create table definition
+SchemaManager -> SQLite: check if table exists
+activate SQLite
+SQLite --> SchemaManager: table status
+deactivate SQLite
+alt table doesn't exist
+    SchemaManager -> SQLite: create table
+    activate SQLite
+    SQLite --> SchemaManager: table created
+    deactivate SQLite
+end
+SchemaManager --> CLI: schema loaded
+deactivate SchemaManager
+
+CLI -> DB: store_results(results)
+activate DB
+DB -> DB: flatten_metrics()
+DB -> SQLite: begin transaction
+activate SQLite
+DB -> SQLite: insert test run
+SQLite --> DB: test_run_id
+DB -> SQLite: insert test results
+SQLite --> DB: results stored
+DB -> SQLite: commit transaction
+deactivate SQLite
+DB --> CLI: storage success
+deactivate DB
+
+CLI --> User: import completed
+deactivate CLI
+
+@enduml
