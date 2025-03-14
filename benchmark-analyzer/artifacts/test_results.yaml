@@ -3,6 +3,17 @@ metadata:
   timestamp: "2024-02-20T14:30:00Z"
   test_type: "cpu_memory_benchmark"
   environment: "prod_cluster_a"
+  comments: 
+  owner: Esteban Poggio
+  configuration:
+    - duration: 320
+    - probes: 20
+    - thread: 5
+    - protocol: tcp 
+    - mtu: 1500
+    - repeats: 3
+
+sw_bom: # check this field and also system_info should be hw_bom
 
 system_info:
   processor:
