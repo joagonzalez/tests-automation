@@ -10,6 +10,10 @@ __pycache__/
 artifacts/*.db
 artifacts/*.db-journal
 
+# contracts/*.db
+contracts/*.db
+contracts/*.db-journal
+
 # Distribution / packaging
 .Python
 build/

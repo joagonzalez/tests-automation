@@ -1,0 +1,88 @@
+{
+  "type": "object",
+  "required": ["hw_bom", "sw_bom"],
+  "properties": {
+    "hw_bom": {
+      "type": "object",
+      "required": ["processor", "motherboard", "memory", "disk"],
+      "properties": {
+        "processor": {
+          "type": "object",
+          "required": ["model", "architecture", "cores", "threads"],
+          "properties": {
+            "model": { "type": "string" },
+            "architecture": { "type": "string" },
+            "cores": { "type": "integer" },
+            "threads": { "type": "integer" }
+          }
+        },
+        "motherboard": {
+          "type": "object",
+          "required": ["manufacturer", "model", "bios_version"],
+          "properties": {
+            "manufacturer": { "type": "string" },
+            "model": { "type": "string" },
+            "bios_version": { "type": "string" }
+          }
+        },
+        "chipset": {
+          "type": "object",
+          "required": ["model", "revision"],
+          "properties": {
+            "model": { "type": "string" },
+            "revision": { "type": "string" }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "required": ["total", "type", "speed", "configuration"],
+          "properties": {
+            "total": { "type": "string" },
+            "type": { "type": "string" },
+            "speed": { "type": "string" },
+            "configuration": { "type": "string" }
+          }
+        },
+        "disk": {
+          "type": "object",
+          "required": ["model", "type", "drives"],
+          "properties": {
+            "model": { "type": "string" },
+            "type": { "type": "string" },
+            "drives": { "type": "string" }
+          }
+        }
+      }
+    },
+    "sw_bom": {
+      "type": "object",
+      "required": ["os", "kernel", "filesystem"],
+      "properties": {
+        "os": {
+          "type": "object",
+          "required": ["name", "version", "build"],
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": "string" },
+            "build": { "type": "string" }
+          }
+        },
+        "kernel": {
+          "type": "object",
+          "required": ["version"],
+          "properties": {
+            "version": { "type": "string" }
+          }
+        },
+        "filesystem": {
+          "type": "object",
+          "required": ["type", "version"],
+          "properties": {
+            "type": { "type": "string" },
+            "version": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
