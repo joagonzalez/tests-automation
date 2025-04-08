@@ -1,0 +1,3 @@
+test_name,read_bw,write_bw,timestamp
+memtest1,2300,2100,2024-03-01T15:23:00
+memtest2,2350,2150,2024-03-01T15:24:00

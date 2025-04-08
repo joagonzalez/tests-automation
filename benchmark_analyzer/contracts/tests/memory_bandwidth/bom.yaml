@@ -1,0 +1,20 @@
+# contracts/tests/memory_bandwidth/bom.yaml
+hardware:
+  name: "server-config-a"
+  version: "1.0"
+  specs:
+    cpu: "Intel Xeon Gold 6230R"
+    ram: "128GB DDR4-3200"
+    dimm_config: "8x16GB"
+    motherboard: "SuperMicro X12DPi-NT6"
+
+software:
+  name: "benchmark-suite-1"
+  version: "2.1.0"
+  specs:
+    os: "Ubuntu 22.04 LTS"
+    kernel: "5.15.0-88-generic"
+    compiler: "gcc 11.4.0"
+    dependencies:
+      - "sysbench=1.0.20"
+      - "stress-ng=0.12.10"

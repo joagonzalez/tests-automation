@@ -1,0 +1,20 @@
+# contracts/tests/cpu_latency/bom.yaml
+hardware:
+  name: "server-config-b"
+  version: "1.0"
+  specs:
+    cpu: "AMD EPYC 7443P"
+    ram: "256GB DDR4-3200"
+    dimm_config: "8x32GB"
+    motherboard: "SuperMicro H12SSL-i"
+
+software:
+  name: "benchmark-suite-2"
+  version: "1.5.0"
+  specs:
+    os: "Ubuntu 22.04 LTS"
+    kernel: "5.15.0-88-generic"
+    compiler: "gcc 11.4.0"
+    dependencies:
+      - "sysbench=1.0.20"
+      - "stress-ng=0.12.10"

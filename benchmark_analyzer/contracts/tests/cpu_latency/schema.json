@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "test_name": { "type": "string" },
+          "latencies_ns": {
+            "type": "array",
+            "items": { "type": "number", "minimum": 0 }
+          },
+          "average_ns": {
+            "type": "number",
+            "minimum": 0
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["test_name", "latencies_ns", "average_ns", "timestamp"]
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "properties": {
+        "test_mode": { "type": "string" },
+        "iterations": { "type": "integer" }
+      }
+    }
+  },
+  "required": ["results"]
+}

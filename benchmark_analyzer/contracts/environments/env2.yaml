@@ -1,0 +1,12 @@
+# contracts/environments/env2.yaml
+name: "development_cluster"
+type: "development"
+comments: "Development and testing environment"
+tools:
+  sysbench: "1.0.20"
+  memtest: "2.1"
+  stress-ng: "0.12.10"
+metadata:
+  location: "lab-1"
+  rack: "L5"
+  zone: "us-west-1"
