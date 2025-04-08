@@ -1,200 +1,177 @@
-# Context
-In order to benchmark/stress/performance tests using different tools we need an orchestrator, an analyzer and a module to validate and establish data contracts.. This is a HLDD that considers how a system like that could be implemented.
+# 🔧 Benchmark Analyzer
 
+A modular CLI application for processing and analyzing hardware/software test results. The tool handles test results in JSON/CSV formats, validates them against schemas, stores them in a SQLite database, and provides visualization through Streamlit dashboards.
 
-# Benchmark Analyzer
+## 📋 Features
 
-A CLI tool for importing, analyzing, and visualizing infrastructure benchmark results. This tool is designed to work with various types of benchmark tests, with initial support for CPU/Memory benchmarks.
+- Import and process test result packages (ZIP files)
+- Schema validation for test results
+- Environment and BOM (Bill of Materials) management
+- SQLite database storage
+- Interactive Streamlit dashboards
+- Support for multiple test types
+- Flexible parser system
 
-## Installation
+## 🚀 Quick Start
 
-1. Clone the repository:
+### Installation
+
 ```bash
-git clone <repository-url>
+# Clone the repository
+git clone https://github.com/yourusername/benchmark-analyzer.git
 cd benchmark-analyzer
-```
 
-2. Create and activate a virtual environment:
-```bash
+# Create and activate virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -e .
 ```
 
-3. Install dependencies:
+### Basic Usage
+
+1. Import test results:
 ```bash
-pip install -r requirements.txt
+python cli.py import \
+  --package test_data/memory_results.zip \
+  --type memory_bandwidth \
+  --environment contracts/environments/env1.yaml \
+  --bom contracts/tests/memory_bandwidth/bom.yaml
 ```
 
-## Usage
-
-### Importing Test Results
-
+2. Launch dashboard:
 ```bash
-# Import results from a YAML file
-python -m src.main import-results \
-    contracts/hw_eng/cpu_memory_benchmark.yaml \
-    --environment contracts/environments/environment.yaml \
-    --bom-file contracts/hw_eng/cpu_memory_benchmark_bom.yaml
+streamlit run benchmark_analyzer/dashboards/streamlit_app.py
 ```
 
-### Listing Results
+## 🧩 Adding New Test Types
 
-```bash
-# List all recent results
-python -m src.main list-results \
-    --environment contracts/environments/environment.yaml
-
-# List specific metrics for a test type
-python -m src.main list-results \
-    --environment contracts/environments/environment.yaml \
-    --test-type cpu_memory_benchmark \
-    --metrics memory.latency cpu.events_per_sec
-
-# List available metrics for a test type
-python -m src.main list-metrics cpu_memory_benchmark
-```
-
-### Launching Dashboard
+### 1. Create Directory Structure
 
 ```bash
-# Run with default settings
-python -m src.main dashboard
-
-# Run on a specific port
-python -m src.main dashboard --port 8502
-
-# Run with a specific database
-python -m src.main dashboard --db-path contracts/benchmark_results.db
+benchmark_analyzer/contracts/tests/new_test_type/
+├── schema.json       # Test result schema
+├── bom.yaml         # Hardware/software specifications
+└── bom_schema.json  # BOM validation schema
 ```
 
-## Adding New Test Types
+### 2. Define Schema
 
-To add support for a new test type, you need to:
-
-1. Create Schema Files:
-   - Add a new JSON schema in `schemas/` directory
-   - Add corresponding Python schema in `src/schemas/`
-
-Example schema structure:
-```python
-# src/schemas/new_test_type_schema.py
-SCHEMA = {
-    "type": "object",
-    "required": ["metadata", "benchmark_results"],
-    "properties": {
-        "metadata": {
-            "type": "object",
-            "required": ["test_id", "timestamp", "test_type", "environment"],
-            "properties": {
-                "test_id": {"type": "string"},
-                "timestamp": {"type": "string"},
-                "test_type": {"type": "string"},
-                "environment": {"type": "string"}
-            }
-        },
-        "benchmark_results": {
-            "type": "object",
-            "required": ["metric_1", "metric_2"],
-            "properties": {
-                "metric_1": {
-                    "type": "number",
-                    "description": "Description of metric 1"
-                },
-                "metric_2": {
-                    "type": "object",
-                    "properties": {
-                        "sub_metric_1": {"type": "number"},
-                        "sub_metric_2": {"type": "string"}
-                    }
-                }
-            }
-        }
-    }
+Create `schema.json`:
+```json
+{
+  "type": "object",
+  "properties": {
+    "test_name": {"type": "string"},
+    "metric_1": {"type": "number"},
+    "metric_2": {"type": "number"},
+    "timestamp": {"type": "string", "format": "date-time"}
+  },
+  "required": ["test_name", "metric_1", "timestamp"]
 }
 ```
 
-2. Create YAML Test Results Template:
-   - Create a template in `artifacts/` showing the expected format
+### 3. Create Parser
 
-Example test results YAML:
-```yaml
-metadata:
-  test_id: new_test_001
-  timestamp: "2024-02-20T14:30:00Z"
-  test_type: "new_test_type"
-  environment: "prod_cluster_a"
-
-benchmark_results:
-  metric_1: 123.45
-  metric_2:
-    sub_metric_1: 67.89
-    sub_metric_2: "some_value"
-```
-
-3. Update Dashboard (Optional):
-   - Add new visualizations in `src/dashboard/main.py`
-   - Add new queries in `src/dashboard/queries.py`
-
-Example dashboard addition:
+Add new parser in `core/parser.py`:
 ```python
-# In src/dashboard/main.py
-def plot_new_metric(df: pd.DataFrame):
-    st.title("New Metric Visualization")
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=df['timestamp'],
-            y=df['metric_1'],
-            mode='lines+markers',
-            name='Metric 1'
-        )
-    )
-    st.plotly_chart(fig)
+class NewTestTypeParser(BaseParser):
+    """Parser for new test type results."""
+
+    def parse_file(self, file_path: Path) -> Dict[str, Any]:
+        with open(file_path) as f:
+            # Add parsing logic here
+            data = json.load(f)  # or csv.DictReader(f)
+            return {
+                "test_name": data["test_name"],
+                "metric_1": float(data["metric_1"]),
+                "timestamp": data["timestamp"]
+            }
+
+    def _is_valid_result_file(self, file_path: Path) -> bool:
+        return file_path.suffix.lower() == ".json"  # or .csv
+
+# Register parser
+ParserRegistry._parsers["new_test_type"] = NewTestTypeParser
 ```
 
-## Project Structure
+### 4. Add Database Model
 
+In `db/models.py`:
+```python
+class ResultsNewTestType(Base):
+    """Model for new test type results."""
+    __tablename__ = "results_new_test_type"
+
+    result_id = Column(Integer, primary_key=True)
+    test_run_id = Column(Integer, ForeignKey("test_runs.test_run_id"))
+    test_name = Column(String)
+    metric_1 = Column(Float)
+    metric_2 = Column(Float)
+    timestamp = Column(DateTime)
 ```
-benchmark-analyzer/
-├── artifacts/                 # Test results and environment configs
-├── schemas/                   # JSON schemas for test validation
-├── src/
-│   ├── cli.py                # CLI implementation
-│   ├── dashboard/            # Streamlit dashboard
-│   ├── database/             # Database management
-│   ├── schemas/              # Python schema definitions
-│   └── utils/                # Utilities and helpers
-├── tests/                    # Test cases
-├── requirements.txt          # Dependencies
-└── README.md                # This file
+
+### 5. Update Dashboard
+
+Add visualization support in `dashboards/streamlit_app.py`:
+```python
+elif test_type == "new_test_type":
+    results_df = load_new_test_type_results(session, filtered_runs['test_run_id'].tolist())
+    # Add visualization code
 ```
 
-## Development
+## 🌍 Adding New Environments
 
-1. Install development dependencies:
+1. Create environment YAML file:
 ```bash
-pip install -r requirements-dev.txt
+# contracts/environments/new_env.yaml
+name: "new_environment"
+type: "production"
+comments: "New environment description"
+tools:
+  tool1: "1.0.0"
+  tool2: "2.1.0"
+metadata:
+  location: "datacenter-2"
+  rack: "R15"
 ```
 
-2. Run tests:
+2. Environment will be automatically registered when used in imports
+
+## 📦 Adding New BOMs
+
+1. Create BOM YAML file:
 ```bash
-make test
+# contracts/tests/test_type/bom.yaml
+hardware:
+  name: "server-config-x"
+  version: "1.0"
+  specs:
+    cpu: "Intel Xeon Gold 6230R"
+    ram: "128GB DDR4-3200"
+
+software:
+  name: "benchmark-suite-x"
+  version: "2.0.0"
+  specs:
+    os: "Ubuntu 22.04 LTS"
+    kernel: "5.15.0-88-generic"
 ```
 
-3. Run linting:
+2. BOM will be validated and registered during test import
+
+## 📊 Database Schema
+
+Key tables:
+- `test_runs`: Test execution metadata
+- `results_*`: Test type specific results
+- `environments`: Environment definitions
+- `hw_bom`/`sw_bom`: Hardware/software specifications
+
+## 🛠️ Development
+
+### Running Tests
 ```bash
-make lint
+pytest
 ```
-
-4. Format code:
-```bash
-make format
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
