@@ -1,0 +1,84 @@
+erDiagram
+    %% Orientation
+    direction LR
+
+    %% Dimensions
+    environments {
+      CHAR(36) id PK
+      VARCHAR(128) name
+      VARCHAR(32) type
+      TEXT comments
+      JSON tools
+      JSON metadata
+    }
+
+    hw_bom {
+      CHAR(36) bom_id PK
+      JSON specs
+    }
+
+    sw_bom {
+      CHAR(36) bom_id PK
+      JSON specs
+      VARCHAR(50) kernel_version
+    }
+
+    test_types {
+      CHAR(36) test_type_id PK
+      VARCHAR(64) name
+      TEXT description
+    }
+
+    operators {
+      TINYINT op_id PK
+      VARCHAR(8) code
+      VARCHAR(64) description
+    }
+
+    %% Fact
+    test_runs {
+      CHAR(36) test_run_id PK
+      CHAR(36) test_type_id FK
+      CHAR(36) environment_id FK
+      CHAR(36) hw_bom_id FK
+      CHAR(36) sw_bom_id FK
+      TIMESTAMP created_at
+      VARCHAR(64) engineer
+      TEXT comments
+      JSON configuration
+    }
+
+    %% Results & Rules
+    results_cpu_mem {
+      CHAR(36) test_run_id FK
+      DOUBLE memory_idle_latency_ns
+      DOUBLE memory_peak_injection_bandwidth_mbs
+      DOUBLE ramspeed_smp_bandwidth_mbs_add
+      DOUBLE ramspeed_smp_bandwidth_mbs_copy
+      INT sysbench_ram_memory_bandwidth_mibs
+      INT sysbench_ram_memory_test_duration_sec
+      VARCHAR(8) sysbench_ram_memory_test_mode
+      INT sysbench_cpu_events_per_second
+      INT sysbench_cpu_duration_sec
+      VARCHAR(16) sysbench_cpu_test_mode
+    }
+
+    acceptance_criteria {
+      CHAR(36) id PK
+      CHAR(36) test_type_id FK
+      TINYINT op_id FK
+      VARCHAR(64) metric
+      DOUBLE threshold_min
+      DOUBLE threshold_max
+      VARCHAR(32) target_component
+    }
+
+    %% Relationships
+    test_runs ||--o{ results_cpu_mem : "has"
+    test_runs }o--|| environments : "runs in"
+    test_runs }o--|| hw_bom       : "uses H/W"
+    test_runs }o--|| sw_bom       : "uses S/W"
+    test_runs }o--|| test_types   : "is type"
+
+    acceptance_criteria }o--|| test_types : "for"
+    acceptance_criteria }o--|| operators  : "using"
