@@ -1,7 +1,0 @@
-metric_type,sub_type,benchmark_type,value,unit,test_duration_sec,test_mode
-memory_latency,idle_latency,N/A,82.4,ns,N/A,N/A
-memory_latency,peak_injection_bandwidth,N/A,65420.8,MB/s,N/A,N/A
-ramspeed_smp,bandwidth,ADD INTEGER,24680.5,MB/s,N/A,N/A
-ramspeed_smp,bandwidth,COPY INTEGER,22456.8,MB/s,N/A,N/A
-sysbench,ram_memory_bandwidth,N/A,18234.6,MiB/s,60,sequential
-sysbench,cpu_events,N/A,1245.8,events/sec,60,cpu-intensive

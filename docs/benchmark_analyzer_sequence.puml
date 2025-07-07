@@ -8,7 +8,7 @@ participant "CLI (import_results)" as CLI
 participant "ResultsValidator" as Validator
 participant "SchemaManager" as SchemaManager
 participant "TestResultsDB" as DB
-database "SQLite" as SQLite
+database "MYSQL" as MYSQL
 
 box "Schema Components" #LightBlue
     participant "JSON Schema Files" as JSONSchema
@@ -43,15 +43,15 @@ activate JSONSchema
 JSONSchema --> SchemaManager: schema definition
 deactivate JSONSchema
 SchemaManager -> SchemaManager: create table definition
-SchemaManager -> SQLite: check if table exists
-activate SQLite
-SQLite --> SchemaManager: table status
-deactivate SQLite
+SchemaManager -> MYSQL: check if table exists
+activate MYSQL
+MYSQL --> SchemaManager: table status
+deactivate MYSQL
 alt table doesn't exist
-    SchemaManager -> SQLite: create table
-    activate SQLite
-    SQLite --> SchemaManager: table created
-    deactivate SQLite
+    SchemaManager -> MYSQL: create table
+    activate MYSQL
+    MYSQL --> SchemaManager: table created
+    deactivate MYSQL
 end
 SchemaManager --> CLI: schema loaded
 deactivate SchemaManager
@@ -59,14 +59,14 @@ deactivate SchemaManager
 CLI -> DB: store_results(results)
 activate DB
 DB -> DB: flatten_metrics()
-DB -> SQLite: begin transaction
-activate SQLite
-DB -> SQLite: insert test run
-SQLite --> DB: test_run_id
-DB -> SQLite: insert test results
-SQLite --> DB: results stored
-DB -> SQLite: commit transaction
-deactivate SQLite
+DB -> MYSQL: begin transaction
+activate MYSQL
+DB -> MYSQL: insert test run
+MYSQL --> DB: test_run_id
+DB -> MYSQL: insert test results
+MYSQL --> DB: results stored
+DB -> MYSQL: commit transaction
+deactivate MYSQL
 DB --> CLI: storage success
 deactivate DB
 

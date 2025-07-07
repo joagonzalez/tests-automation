@@ -1,0 +1,120 @@
+name: "development"
+type: "development"
+comments: "Development environment for benchmark analyzer testing and development"
+
+tools:
+  python: "3.11.7"
+  gcc: "11.4.0"
+  make: "4.3"
+  cmake: "3.22.1"
+  git: "2.34.1"
+  docker: "24.0.7"
+  docker-compose: "2.21.0"
+  sysbench: "1.0.20"
+  stress-ng: "0.15.06"
+  iperf3: "3.9"
+  fio: "3.28"
+  mysql: "8.0.35"
+  benchmark_tools:
+    ramspeed: "2.6.0"
+    stream: "5.10"
+    linpack: "2.0"
+    geekbench: "6.2.0"
+
+metadata:
+  location: "local-development"
+  rack: "DEV-001"
+  datacenter: "home-lab"
+  environment_owner: "development-team"
+  contact_email: "dev-team@company.com"
+
+  # Hardware specifications
+  hardware:
+    cpu_model: "Intel Core i7-12700K"
+    cpu_cores: 12
+    cpu_threads: 20
+    cpu_base_frequency: "3.6GHz"
+    cpu_boost_frequency: "5.0GHz"
+    memory_total: "32GB"
+    memory_type: "DDR4-3200"
+    memory_channels: 2
+    storage_type: "NVMe SSD"
+    storage_capacity: "1TB"
+    network_interface: "Gigabit Ethernet"
+
+  # Software environment
+  software:
+    operating_system: "Ubuntu 22.04.3 LTS"
+    kernel_version: "5.15.0-88-generic"
+    container_runtime: "Docker 24.0.7"
+    virtualization: "KVM"
+
+  # Network configuration
+  network:
+    hostname: "dev-benchmark-01"
+    ip_address: "192.168.1.100"
+    subnet: "192.168.1.0/24"
+    gateway: "192.168.1.1"
+    dns_servers: ["8.8.8.8", "8.8.4.4"]
+
+  # Performance settings
+  performance:
+    cpu_governor: "performance"
+    numa_balancing: "disabled"
+    transparent_hugepages: "always"
+    swappiness: 10
+    dirty_ratio: 15
+
+  # Test configuration
+  test_config:
+    default_test_duration: 300
+    warmup_time: 30
+    cooldown_time: 60
+    max_concurrent_tests: 4
+    result_retention_days: 90
+
+  # Monitoring and logging
+  monitoring:
+    enable_system_monitoring: true
+    enable_performance_monitoring: true
+    log_level: "INFO"
+    metrics_collection_interval: 10
+
+  # Security settings
+  security:
+    firewall_enabled: true
+    selinux_mode: "disabled"
+    secure_boot: false
+
+  # Development specific settings
+  development:
+    debug_mode: true
+    verbose_logging: true
+    enable_experimental_features: true
+    auto_cleanup_temp_files: true
+
+  # Environment tags
+  tags:
+    - "development"
+    - "testing"
+    - "benchmark"
+    - "local"
+    - "x86_64"
+    - "ubuntu"
+
+  # Additional notes
+  notes: |
+    This is a development environment used for:
+    - Testing benchmark analyzer functionality
+    - Developing new test types and parsers
+    - Validating schema changes
+    - Performance testing of the framework itself
+
+    The environment is configured for maximum flexibility and debugging capabilities.
+    Not suitable for production workloads.
+
+  # Environment validation
+  validation:
+    last_validated: "2024-01-15T10:00:00Z"
+    validation_status: "passed"
+    validation_notes: "All systems operational, ready for testing"

@@ -1,9 +1,9 @@
 
-# 🔧 CLI App Prompt for Claude — Benchmark Analyzer
+# 🔧 CLI App Prompt — Benchmark Analyzer
 
 ## 🧠 Context
 
-We’re developing a **modular CLI application** called `benchmark-analyzer`. The goal is to process and analyze hardware/software test results generated from benchmarking tools. These results are saved as JSON or CSV files and packaged as `.zip` files. The CLI extracts data, validates it against provided schemas, stores it in a local SQLite database, and optionally visualizes it through Streamlit dashboards.
+We’re developing a **modular CLI application** called `benchmark-analyzer`. The goal is to process and analyze hardware/software test results generated from benchmarking tools. These results are saved as JSON or CSV files and packaged as `.zip` files. The CLI extracts data, validates it against provided schemas, stores it in a MYSQL database, and optionally visualizes it through Dash dashboards.
 
 The application will be used by two main personas:
 - **Test Operator**: Executes tests, prepares result packages.
@@ -62,27 +62,7 @@ benchmark-analyzer import \
 
 ## 🗃️ Data Model (from DER)
 
-### Table: `test_runs`
-- `test_run_id` (PK), `test_type_id` (FK), `environment_id` (FK)
-- `hw_bom_id`, `sw_bom_id` (FKs)
-- `created_at`, `engineer`, `comments`, `configuration (JSON)`
-
-### Table: `results_test_type_1`
-- `test_type_id` (PK), `test_type` (TEXT)
-- Metrics: `memory_idle_latency_ns`, `sysbench_cpu_duration_sec`, etc.
-
-### Table: `hw_bom` / `sw_bom`
-- `bom_id` (PK)
-- `specs (JSON)`
-
-### Table: `environment`
-- `environment_id` (PK)
-- `name`, `type`, `comments`, `tools (JSON)`, `metadata (JSON)`
-
-### Table: `acceptance_criteria`
-- `criteria_id`, `test_type_id` (FK), `metric`
-- `threshold`, `operator`, `target_component`
-
+Use the schemas.sql in docs folder to get the schemas
 ---
 
 ## 🧱 Architecture and Modules (from architecture diagram)

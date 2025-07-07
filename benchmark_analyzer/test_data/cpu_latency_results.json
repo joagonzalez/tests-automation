@@ -1,6 +1,0 @@
-{
-  "test_name": "latency_test_1",
-  "latencies_ns": [102, 110, 98, 107, 103],
-  "average_ns": 60.0,
-  "timestamp": "2024-03-01T19:23:00"
-}
