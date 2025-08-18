@@ -122,7 +122,7 @@ cli: ## Run the CLI application
 .PHONY: api
 api: ## Run the API server
 	@echo "$(BLUE)Starting API server...$(NC)"
-	@$(UV) run benchmark-api
+	@set -a && . ./.env && set +a && $(UV) run benchmark-api
 
 .PHONY: api-dev
 api-dev: ## Run the API server in development mode
@@ -143,18 +143,18 @@ db-init: ## Initialize database
 .PHONY: db-status
 db-status: ## Show database status
 	@echo "$(BLUE)Database status:$(NC)"
-	@$(UV) run benchmark-analyzer db status
+	@set -a && . ./.env && set +a && $(UV) run benchmark-analyzer db status
 
 .PHONY: db-clean
 db-clean: ## Clean database (WARNING: Deletes all data)
 	@echo "$(YELLOW)WARNING: This will delete all data!$(NC)"
-	@$(UV) run benchmark-analyzer db clean
+	@set -a && . ./.env && set +a && $(UV) run benchmark-analyzer db clean
 
 .PHONY: db-backup
 db-backup: ## Create database backup
 	@echo "$(BLUE)Creating database backup...$(NC)"
 	@mkdir -p backups
-	@$(UV) run benchmark-analyzer db backup backups/backup_$(shell date +%Y%m%d_%H%M%S).sql
+	@set -a && . ./.env && set +a && $(UV) run benchmark-analyzer db backup backups/backup_$(shell date +%Y%m%d_%H%M%S).sql
 
 # Infrastructure
 .PHONY: infra-up

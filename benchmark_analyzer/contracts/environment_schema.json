@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Environment Configuration Schema",
+  "description": "Schema for validating environment configuration files",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Environment name",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "type": {
+      "type": "string",
+      "description": "Environment type",
+      "enum": ["lab", "cloud", "virtual", "bare-metal", "container", "development", "production"]
+    },
+    "comments": {
+      "type": "string",
+      "description": "Environment comments",
+      "maxLength": 1000
+    },
+    "tools": {
+      "type": "object",
+      "description": "Tools configuration",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "version": {"type": "string"},
+          "command": {"type": "string"},
+          "options": {"type": "object"}
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Environment metadata",
+      "additionalProperties": true
+    }
+  },
+  "required": ["name", "type"],
+  "additionalProperties": true
+}

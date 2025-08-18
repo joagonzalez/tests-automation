@@ -1,0 +1,39 @@
+{
+  "test_name": "lab_server_cpu_memory_benchmark_001",
+  "timestamp": "2024-01-15T14:30:00Z",
+  "test_duration_sec": 300,
+  "memory_idle_latency_ns": 95.2,
+  "memory_peak_injection_bandwidth_mbs": 28500.0,
+  "ramspeed_smp_bandwidth_mbs_add": 24200.0,
+  "ramspeed_smp_bandwidth_mbs_copy": 23800.0,
+  "sysbench_ram_memory_bandwidth_mibs": 26000,
+  "sysbench_ram_memory_test_duration_sec": 60,
+  "sysbench_ram_memory_test_mode": "seq",
+  "sysbench_cpu_events_per_second": 18500,
+  "sysbench_cpu_duration_sec": 60,
+  "sysbench_cpu_test_mode": "cpu",
+  "cpu_utilization_percent": 98.5,
+  "memory_utilization_percent": 75.2,
+  "load_average_1min": 16.8,
+  "load_average_5min": 12.3,
+  "load_average_15min": 8.9,
+  "threads_used": 16,
+  "cpu_cores": 26,
+  "memory_total_mb": 131072,
+  "memory_available_mb": 32768,
+  "test_parameters": {
+    "block_size": "4KB",
+    "access_pattern": "sequential",
+    "warmup_time_sec": 30,
+    "iterations": 5
+  },
+  "error_count": 0,
+  "warnings": [],
+  "metadata": {
+    "tool_version": "sysbench-1.0.20",
+    "os_info": "Ubuntu 22.04.3 LTS",
+    "kernel_version": "5.15.0-88-generic",
+    "cpu_model": "Intel Xeon Gold 6230R CPU @ 2.10GHz",
+    "memory_type": "DDR4-2933"
+  }
+}

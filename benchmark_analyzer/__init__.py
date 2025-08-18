@@ -22,10 +22,10 @@ Example:
 
 __version__ = "0.1.0"
 __author__ = "Benchmark Analyzer Team"
-__email__ = "benchmark-analyzer@company.com"
-__license__ = "MIT"
+__email__ = "benchmark-analyzer@TBD"
+__license__ = "TBD"
 __description__ = "Framework for analyzing hardware/software benchmark results"
-__url__ = "https://github.com/company/benchmark-analyzer"
+__url__ = "https://repo_url/benchmark-analyzer"
 
 # Package metadata
 __all__ = [
