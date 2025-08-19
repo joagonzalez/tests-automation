@@ -92,31 +92,93 @@ Create `benchmark_analyzer/contracts/tests/network/bom_schema.json`:
   "properties": {
     "hardware": {
       "type": "object",
+      "description": "Hardware specifications",
       "properties": {
         "specs": {
           "type": "object",
+          "description": "Hardware specifications",
           "properties": {
-            "network_adapter": {"type": "string"},
-            "port_speed": {"type": "string"},
-            "switch_model": {"type": "string"}
-          }
+            "manufacturer": {
+              "type": "string",
+              "description": "Hardware manufacturer"
+            },
+            "model": {
+              "type": "string", 
+              "description": "Hardware model"
+            },
+            "network_adapter": {
+              "type": "object",
+              "description": "Network adapter specifications",
+              "properties": {
+                "model": {"type": "string"},
+                "ports": {"type": "integer", "minimum": 1},
+                "speed": {"type": "string"},
+                "interface": {"type": "string"}
+              },
+              "required": ["model"],
+              "additionalProperties": true
+            },
+            "switch": {
+              "type": "object",
+              "description": "Switch specifications",
+              "properties": {
+                "model": {"type": "string"},
+                "ports": {"type": "string"},
+                "uplinks": {"type": "string"}
+              },
+              "additionalProperties": true
+            },
+            "cables": {
+              "type": "object",
+              "description": "Cable specifications",
+              "properties": {
+                "type": {"type": "string"},
+                "length": {"type": "string"}
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
         }
-      }
+      },
+      "additionalProperties": true
     },
     "software": {
       "type": "object",
+      "description": "Software specifications",
       "properties": {
         "specs": {
           "type": "object",
+          "description": "Software specifications",
           "properties": {
-            "iperf_version": {"type": "string"},
-            "driver_version": {"type": "string"}
-          }
+            "iperf_version": {
+              "type": "string",
+              "description": "iPerf version"
+            },
+            "driver_version": {
+              "type": "string",
+              "description": "Network driver version"
+            },
+            "network_stack": {
+              "type": "string",
+              "description": "Network stack information"
+            },
+            "kernel_version": {
+              "type": "string",
+              "description": "Kernel version"
+            }
+          },
+          "additionalProperties": true
         }
-      }
+      },
+      "additionalProperties": true
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {"required": ["hardware"]},
+    {"required": ["software"]}
+  ]
 }
 ```
 
@@ -211,7 +273,150 @@ MODEL_REGISTRY = {
 
 For this example, we'll assume the generic JSON storage is sufficient, but the above shows how to create dedicated columns for better query performance.
 
-### Step 6: Create Example Test Data
+### Step 6: Update Data Loader for Network Results
+
+To properly handle network test results, you need to update the data loader in `benchmark_analyzer/core/loader.py`:
+
+#### 6.1: Update imports (around line 16-24)
+
+Find this section:
+```python
+from ..db.models import (
+    Environment,
+    HardwareBOM,
+    SoftwareBOM,
+    TestRun,
+    TestType,
+    ResultsCpuMem,
+)
+```
+
+Change it to:
+```python
+from ..db.models import (
+    Environment,
+    HardwareBOM,
+    SoftwareBOM,
+    TestRun,
+    TestType,
+    ResultsCpuMem,
+    ResultsNetwork,
+)
+```
+
+#### 6.2: Update the `_load_test_results` method (around lines 283-296)
+
+Find this method:
+```python
+if test_type == "cpu_mem":
+    self._load_cpu_mem_results(session, test_run, results)
+else:
+    # For other test types, we could dynamically create tables
+    # For now, log a warning
+    logger.warning(f"No specific loader for test type {test_type}, skipping results")
+```
+
+Change it to:
+```python
+if test_type == "cpu_mem":
+    self._load_cpu_mem_results(session, test_run, results)
+elif test_type == "network":
+    self._load_network_results(session, test_run, results)
+else:
+    # For other test types, we could dynamically create tables
+    # For now, log a warning
+    logger.warning(f"No specific loader for test type {test_type}, skipping results")
+```
+
+#### 6.3: Add the `_load_network_results` method (after the `_load_cpu_mem_results` method)
+
+Add this new method:
+```python
+def _load_network_results(
+    self,
+    session: Session,
+    test_run: TestRun,
+    results: List[Dict[str, Any]],
+) -> None:
+    """Load Network results into results_network table."""
+    try:
+        # Aggregate all results into a single record
+        aggregated_result = self._aggregate_network_results(results)
+
+        network_result = ResultsNetwork(
+            test_run_id=test_run.test_run_id,
+            throughput_mbps=aggregated_result.get('throughput_mbps'),
+            latency_ms=aggregated_result.get('latency_ms'),
+            packet_loss_percent=aggregated_result.get('packet_loss_percent'),
+            test_duration_sec=aggregated_result.get('test_duration_sec'),
+            jitter_ms=aggregated_result.get('jitter_ms'),
+            bandwidth_utilization_percent=aggregated_result.get('bandwidth_utilization_percent'),
+            connection_count=aggregated_result.get('connection_count'),
+        )
+
+        session.add(network_result)
+        logger.debug(f"Added Network results for test run {test_run.test_run_id}")
+
+    except Exception as e:
+        logger.error(f"Failed to load Network results: {e}")
+        raise
+```
+
+#### 6.4: Add the `_aggregate_network_results` method (after the `_aggregate_cpu_mem_results` method)
+
+Add this new method:
+```python
+def _aggregate_network_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Aggregate multiple Network results into a single record."""
+    aggregated = {}
+
+    for result in results:
+        for key, value in result.items():
+            if key in ['throughput_mbps', 'latency_ms', 'packet_loss_percent', 
+                      'test_duration_sec', 'jitter_ms', 'bandwidth_utilization_percent', 
+                      'connection_count']:
+                # For numeric values, take the last one or average if needed
+                if isinstance(value, (int, float)):
+                    aggregated[key] = value
+
+    return aggregated
+```
+
+#### 6.5: Update the `get_test_run_summary` method
+
+In the `get_test_run_summary` method, find this section:
+```python
+# Check for results
+if test_run.results_cpu_mem:
+    summary['has_results'] = True
+    summary['result_type'] = 'cpu_mem'
+```
+
+Change it to:
+```python
+# Check for results
+if test_run.results_cpu_mem:
+    summary['has_results'] = True
+    summary['result_type'] = 'cpu_mem'
+elif test_run.results_network:
+    summary['has_results'] = True
+    summary['result_type'] = 'network'
+```
+
+#### 6.6: Update the `get_test_statistics` method
+
+In the `get_test_statistics` method, find this section:
+```python
+'total_cpu_mem_results': session.query(ResultsCpuMem).count(),
+```
+
+Change it to:
+```python
+'total_cpu_mem_results': session.query(ResultsCpuMem).count(),
+'total_network_results': session.query(ResultsNetwork).count(),
+```
+
+### Step 7: Create Example Test Data
 
 Create the example directory structure:
 
