@@ -117,7 +117,7 @@ cli: ## Run the CLI application
 .PHONY: api
 api: ## Run the API server
 	@echo "$(BLUE)Starting API server...$(NC)"
-	@set -a && . ./.env && set +a && $(UV) run benchmark-api
+	@$(UV) run benchmark-api
 
 .PHONY: api-dev
 api-dev: ## Run the API server in development mode
