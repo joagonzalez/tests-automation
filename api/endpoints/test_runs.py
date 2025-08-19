@@ -161,6 +161,7 @@ async def get_test_run(
     """Get a specific test run."""
     try:
         test_run = db.query(TestRun).filter(TestRun.test_run_id == test_run_id).first()
+        print(test_run)
 
         if not test_run:
             raise HTTPException(status_code=404, detail="Test run not found")
@@ -176,7 +177,7 @@ async def get_test_run(
             configuration=test_run.configuration,
             created_at=test_run.created_at,
             test_type_name=test_run.test_type.name if test_run.test_type else None,
-            environment_name=test_run.environment.name if run.environment else None,
+            environment_name=test_run.environment.name if test_run.environment else None,
             has_results=test_run.results_cpu_mem is not None,
         )
 
