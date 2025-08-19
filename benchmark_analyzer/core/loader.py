@@ -1,5 +1,6 @@
 """Data loader for importing test results into database."""
 
+import json
 import logging
 import uuid
 from datetime import datetime
@@ -9,6 +10,7 @@ from typing import Any, Dict, List, Optional, Union
 import yaml
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from ..config import Config, get_config
 from ..db.connector import DatabaseManager, get_db_manager
@@ -130,7 +132,7 @@ class DataLoader:
                 type=env_data.get('type'),
                 comments=env_data.get('comments'),
                 tools=env_data.get('tools'),
-                metadata=env_data.get('metadata'),
+                env_metadata=env_data.get('metadata'),
             )
 
             session.add(environment)
@@ -143,8 +145,55 @@ class DataLoader:
             logger.error(f"Failed to load environment from {environment_file}: {e}")
             raise
 
+    def _normalize_json_for_comparison(self, data: Dict[str, Any]) -> str:
+        """Normalize JSON data for consistent comparison."""
+        # Convert to JSON string with sorted keys for consistent comparison
+        return json.dumps(data, sort_keys=True, separators=(',', ':'))
+
+    def _find_existing_hw_bom(self, session: Session, specs: Dict[str, Any]) -> Optional[HardwareBOM]:
+        """Find existing hardware BOM with identical specs."""
+        try:
+            # Normalize the specs for comparison
+            normalized_specs = self._normalize_json_for_comparison(specs)
+            
+            # Query all hardware BOMs and compare specs
+            hw_boms = session.query(HardwareBOM).all()
+            
+            for bom in hw_boms:
+                existing_normalized = self._normalize_json_for_comparison(bom.specs)
+                if existing_normalized == normalized_specs:
+                    logger.debug(f"Found existing hardware BOM with matching specs: {bom.bom_id}")
+                    return bom
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding existing hardware BOM: {e}")
+            return None
+
+    def _find_existing_sw_bom(self, session: Session, specs: Dict[str, Any]) -> Optional[SoftwareBOM]:
+        """Find existing software BOM with identical specs."""
+        try:
+            # Normalize the specs for comparison
+            normalized_specs = self._normalize_json_for_comparison(specs)
+            
+            # Query all software BOMs and compare specs
+            sw_boms = session.query(SoftwareBOM).all()
+            
+            for bom in sw_boms:
+                existing_normalized = self._normalize_json_for_comparison(bom.specs)
+                if existing_normalized == normalized_specs:
+                    logger.debug(f"Found existing software BOM with matching specs: {bom.bom_id}")
+                    return bom
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding existing software BOM: {e}")
+            return None
+
     def _load_bom(self, session: Session, bom_file: Path) -> tuple[Optional[HardwareBOM], Optional[SoftwareBOM]]:
-        """Load BOM from YAML file."""
+        """Load BOM from YAML file with deduplication."""
         try:
             with open(bom_file, 'r') as f:
                 bom_data = yaml.safe_load(f)
@@ -152,26 +201,45 @@ class DataLoader:
             hw_bom = None
             sw_bom = None
 
-            # Create hardware BOM if present
+            # Handle hardware BOM if present
             if 'hardware' in bom_data:
-                hw_bom = HardwareBOM(
-                    bom_id=str(uuid.uuid4()),
-                    specs=bom_data['hardware'],
-                )
-                session.add(hw_bom)
-                logger.debug("Created hardware BOM")
+                hw_specs = bom_data['hardware']
+                
+                # Try to find existing hardware BOM with same specs
+                existing_hw_bom = self._find_existing_hw_bom(session, hw_specs)
+                
+                if existing_hw_bom:
+                    hw_bom = existing_hw_bom
+                    logger.info(f"Reusing existing hardware BOM: {hw_bom.bom_id}")
+                else:
+                    # Create new hardware BOM
+                    hw_bom = HardwareBOM(
+                        bom_id=str(uuid.uuid4()),
+                        specs=hw_specs,
+                    )
+                    session.add(hw_bom)
+                    session.flush()
+                    logger.info(f"Created new hardware BOM: {hw_bom.bom_id}")
 
-            # Create software BOM if present
+            # Handle software BOM if present
             if 'software' in bom_data:
-                sw_bom = SoftwareBOM(
-                    bom_id=str(uuid.uuid4()),
-                    specs=bom_data['software'],
-                )
-                session.add(sw_bom)
-                logger.debug("Created software BOM")
-
-            if hw_bom or sw_bom:
-                session.flush()
+                sw_specs = bom_data['software']
+                
+                # Try to find existing software BOM with same specs
+                existing_sw_bom = self._find_existing_sw_bom(session, sw_specs)
+                
+                if existing_sw_bom:
+                    sw_bom = existing_sw_bom
+                    logger.info(f"Reusing existing software BOM: {sw_bom.bom_id}")
+                else:
+                    # Create new software BOM
+                    sw_bom = SoftwareBOM(
+                        bom_id=str(uuid.uuid4()),
+                        specs=sw_specs,
+                    )
+                    session.add(sw_bom)
+                    session.flush()
+                    logger.info(f"Created new software BOM: {sw_bom.bom_id}")
 
             return hw_bom, sw_bom
 
