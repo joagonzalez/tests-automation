@@ -4,9 +4,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Any
-from urllib.parse import urlparse
-
-import yaml
+from dotenv import load_dotenv
 
 
 @dataclass
@@ -59,6 +57,8 @@ class PathConfig:
     environments_dir: Path
     artifacts_dir: Path
     temp_dir: Path
+    upload_dir: Path
+    logs_dir: Path
 
     def __post_init__(self) -> None:
         """Ensure all paths are Path objects."""
@@ -68,6 +68,8 @@ class PathConfig:
         self.environments_dir = Path(self.environments_dir)
         self.artifacts_dir = Path(self.artifacts_dir)
         self.temp_dir = Path(self.temp_dir)
+        self.upload_dir = Path(self.upload_dir)
+        self.logs_dir = Path(self.logs_dir)
 
 
 @dataclass
@@ -79,156 +81,151 @@ class LoggingConfig:
     file_path: Optional[Path] = None
     max_bytes: int = 10485760  # 10MB
     backup_count: int = 5
+    enable_file_logging: bool = False
+
+
+@dataclass
+class SecurityConfig:
+    """Security configuration."""
+
+    secret_key: str = "your-very-secret-key-change-in-production"
+    enable_auth: bool = False
+    max_file_size: int = 104857600  # 100MB
 
 
 class Config:
     """Main configuration class."""
 
-    def __init__(self, config_file: Optional[str] = None) -> None:
+    def __init__(self, env_file: Optional[str] = None) -> None:
         """Initialize configuration."""
-        self._config_data: Dict[str, Any] = {}
-        self._load_config(config_file)
+        self._load_env_file(env_file)
 
         # Initialize sub-configurations
         self.database = self._init_database_config()
         self.api = self._init_api_config()
         self.paths = self._init_path_config()
         self.logging = self._init_logging_config()
+        self.security = self._init_security_config()
 
         # Additional settings
         self.environment = self._get_environment()
         self.debug = self._get_debug_mode()
 
-    def _load_config(self, config_file: Optional[str] = None) -> None:
-        """Load configuration from file or environment."""
-        # Load from file if provided
-        if config_file and os.path.exists(config_file):
-            with open(config_file, 'r') as f:
-                if config_file.endswith('.yaml') or config_file.endswith('.yml'):
-                    self._config_data = yaml.safe_load(f)
-                else:
-                    raise ValueError(f"Unsupported config file format: {config_file}")
+    def _load_env_file(self, env_file: Optional[str] = None) -> None:
+        """Load environment variables from .env file."""
+        if env_file:
+            # Load specific env file
+            load_dotenv(env_file, override=True)
+        else:
+            # Try to find .env file in current directory or parent directories
+            env_path = Path.cwd()
+            while env_path != env_path.parent:
+                env_file_path = env_path / ".env"
+                if env_file_path.exists():
+                    load_dotenv(env_file_path, override=True)
+                    break
+                env_path = env_path.parent
+            else:
+                # Try one more time in the script's directory
+                script_dir = Path(__file__).parent
+                env_file_path = script_dir / ".env"
+                if env_file_path.exists():
+                    load_dotenv(env_file_path, override=True)
 
-        # Override with environment variables
-        self._load_env_variables()
+    def _get_env_bool(self, key: str, default: bool = False) -> bool:
+        """Get boolean environment variable."""
+        value = os.getenv(key, str(default)).lower()
+        return value in ('true', '1', 'yes', 'on')
 
-    def _load_env_variables(self) -> None:
-        """Load configuration from environment variables."""
-        env_mapping = {
-            'DB_HOST': ['database', 'host'],
-            'DB_PORT': ['database', 'port'],
-            'DB_USER': ['database', 'username'],
-            'DB_PASSWORD': ['database', 'password'],
-            'DB_NAME': ['database', 'database'],
-            'API_HOST': ['api', 'host'],
-            'API_PORT': ['api', 'port'],
-            'API_DEBUG': ['api', 'debug'],
-            'LOG_LEVEL': ['logging', 'level'],
-            'ENVIRONMENT': ['environment'],
-            'DEBUG': ['debug'],
-        }
-
-        for env_var, config_path in env_mapping.items():
-            value = os.getenv(env_var)
-            if value is not None:
-                self._set_nested_config(config_path, self._convert_env_value(value))
-
-    def _set_nested_config(self, path: list, value: Any) -> None:
-        """Set nested configuration value."""
-        current = self._config_data
-        for key in path[:-1]:
-            if key not in current:
-                current[key] = {}
-            current = current[key]
-        current[path[-1]] = value
-
-    def _convert_env_value(self, value: str) -> Any:
-        """Convert environment variable string to appropriate type."""
-        # Boolean conversion
-        if value.lower() in ('true', 'false'):
-            return value.lower() == 'true'
-
-        # Integer conversion
+    def _get_env_int(self, key: str, default: int) -> int:
+        """Get integer environment variable."""
         try:
-            return int(value)
+            return int(os.getenv(key, str(default)))
         except ValueError:
-            pass
+            return default
 
-        # Float conversion
-        try:
-            return float(value)
-        except ValueError:
-            pass
-
-        # Return as string
-        return value
+    def _get_env_list(self, key: str, default: list = None, separator: str = ",") -> list:
+        """Get list environment variable."""
+        if default is None:
+            default = []
+        value = os.getenv(key)
+        if value:
+            return [item.strip() for item in value.split(separator) if item.strip()]
+        return default
 
     def _init_database_config(self) -> DatabaseConfig:
         """Initialize database configuration."""
-        db_config = self._config_data.get('database', {})
         return DatabaseConfig(
-            host=db_config.get('host', 'localhost'),
-            port=db_config.get('port', 3306),
-            username=db_config.get('username', 'root'),
-            password=db_config.get('password', ''),
-            database=db_config.get('database', 'perf_framework'),
-            driver=db_config.get('driver', 'pymysql')
+            host=os.getenv('DB_HOST', 'localhost'),
+            port=self._get_env_int('DB_PORT', 3306),
+            username=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASSWORD', ''),
+            database=os.getenv('DB_NAME', 'perf_framework'),
+            driver=os.getenv('DB_DRIVER', 'pymysql')
         )
 
     def _init_api_config(self) -> APIConfig:
         """Initialize API configuration."""
-        api_config = self._config_data.get('api', {})
         return APIConfig(
-            host=api_config.get('host', '0.0.0.0'),
-            port=api_config.get('port', 8000),
-            debug=api_config.get('debug', False),
-            reload=api_config.get('reload', False),
-            workers=api_config.get('workers', 1),
-            log_level=api_config.get('log_level', 'info'),
-            cors_origins=api_config.get('cors_origins', ['*'])
+            host=os.getenv('API_HOST', '0.0.0.0'),
+            port=self._get_env_int('API_PORT', 8000),
+            debug=self._get_env_bool('API_DEBUG', False),
+            reload=self._get_env_bool('API_RELOAD', False),
+            workers=self._get_env_int('API_WORKERS', 1),
+            log_level=os.getenv('API_LOG_LEVEL', 'info'),
+            cors_origins=self._get_env_list('CORS_ORIGINS', ['*'])
         )
 
     def _init_path_config(self) -> PathConfig:
         """Initialize path configuration."""
-        base_dir = Path(__file__).parent
-        paths_config = self._config_data.get('paths', {})
+        # Base directory - use current working directory if not specified
+        base_dir = Path(os.getenv('BASE_DIR', Path.cwd()))
+
+        # If BASE_DIR is not set, use the package directory
+        if os.getenv('BASE_DIR') is None:
+            base_dir = Path(__file__).parent
 
         return PathConfig(
-            base_dir=Path(paths_config.get('base_dir', base_dir)),
-            contracts_dir=Path(paths_config.get('contracts_dir', base_dir / 'contracts')),
-            test_types_dir=Path(paths_config.get('test_types_dir', base_dir / 'contracts' / 'tests')),
-            environments_dir=Path(paths_config.get('environments_dir', base_dir / 'contracts' / 'environments')),
-            artifacts_dir=Path(paths_config.get('artifacts_dir', base_dir / 'artifacts')),
-            temp_dir=Path(paths_config.get('temp_dir', base_dir / 'temp'))
+            base_dir=base_dir,
+            contracts_dir=Path(os.getenv('CONTRACTS_DIR', base_dir / 'contracts')),
+            test_types_dir=Path(os.getenv('TEST_TYPES_DIR', base_dir / 'contracts' / 'tests')),
+            environments_dir=Path(os.getenv('ENVIRONMENTS_DIR', base_dir / 'contracts' / 'environments')),
+            artifacts_dir=Path(os.getenv('ARTIFACTS_DIR', base_dir / 'artifacts')),
+            temp_dir=Path(os.getenv('TEMP_DIR', base_dir / 'temp')),
+            upload_dir=Path(os.getenv('UPLOAD_DIR', base_dir / 'uploads')),
+            logs_dir=Path(os.getenv('LOGS_DIR', base_dir / 'logs'))
         )
 
     def _init_logging_config(self) -> LoggingConfig:
         """Initialize logging configuration."""
-        logging_config = self._config_data.get('logging', {})
-
-        file_path = logging_config.get('file_path')
+        file_path = os.getenv('LOG_FILE_PATH')
         if file_path:
             file_path = Path(file_path)
 
         return LoggingConfig(
-            level=logging_config.get('level', 'INFO'),
-            format=logging_config.get('format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
+            level=os.getenv('LOG_LEVEL', 'INFO'),
+            format=os.getenv('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
             file_path=file_path,
-            max_bytes=logging_config.get('max_bytes', 10485760),
-            backup_count=logging_config.get('backup_count', 5)
+            max_bytes=self._get_env_int('LOG_MAX_BYTES', 10485760),
+            backup_count=self._get_env_int('LOG_BACKUP_COUNT', 5),
+            enable_file_logging=self._get_env_bool('ENABLE_FILE_LOGGING', False)
+        )
+
+    def _init_security_config(self) -> SecurityConfig:
+        """Initialize security configuration."""
+        return SecurityConfig(
+            secret_key=os.getenv('SECRET_KEY', 'your-very-secret-key-change-in-production'),
+            enable_auth=self._get_env_bool('ENABLE_AUTH', False),
+            max_file_size=self._get_env_int('MAX_FILE_SIZE', 104857600)
         )
 
     def _get_environment(self) -> str:
         """Get current environment."""
-        return self._config_data.get('environment', os.getenv('ENVIRONMENT', 'development'))
+        return os.getenv('ENVIRONMENT', 'development')
 
     def _get_debug_mode(self) -> bool:
         """Get debug mode."""
-        return self._config_data.get('debug', os.getenv('DEBUG', 'false').lower() == 'true')
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Get configuration value by key."""
-        return self._config_data.get(key, default)
+        return self._get_env_bool('DEBUG', False)
 
     def ensure_directories(self) -> None:
         """Ensure all configured directories exist."""
@@ -237,7 +234,9 @@ class Config:
             self.paths.test_types_dir,
             self.paths.environments_dir,
             self.paths.artifacts_dir,
-            self.paths.temp_dir
+            self.paths.temp_dir,
+            self.paths.upload_dir,
+            self.paths.logs_dir
         ]
 
         for directory in directories:
@@ -286,14 +285,21 @@ class Config:
                 'test_types_dir': str(self.paths.test_types_dir),
                 'environments_dir': str(self.paths.environments_dir),
                 'artifacts_dir': str(self.paths.artifacts_dir),
-                'temp_dir': str(self.paths.temp_dir)
+                'temp_dir': str(self.paths.temp_dir),
+                'upload_dir': str(self.paths.upload_dir),
+                'logs_dir': str(self.paths.logs_dir)
             },
             'logging': {
                 'level': self.logging.level,
                 'format': self.logging.format,
                 'file_path': str(self.logging.file_path) if self.logging.file_path else None,
                 'max_bytes': self.logging.max_bytes,
-                'backup_count': self.logging.backup_count
+                'backup_count': self.logging.backup_count,
+                'enable_file_logging': self.logging.enable_file_logging
+            },
+            'security': {
+                'enable_auth': self.security.enable_auth,
+                'max_file_size': self.security.max_file_size
             }
         }
 
@@ -302,16 +308,16 @@ class Config:
 _config: Optional[Config] = None
 
 
-def get_config(config_file: Optional[str] = None) -> Config:
+def get_config(env_file: Optional[str] = None) -> Config:
     """Get global configuration instance."""
     global _config
     if _config is None:
-        _config = Config(config_file)
+        _config = Config(env_file)
     return _config
 
 
-def reload_config(config_file: Optional[str] = None) -> Config:
+def reload_config(env_file: Optional[str] = None) -> Config:
     """Reload configuration."""
     global _config
-    _config = Config(config_file)
+    _config = Config(env_file)
     return _config

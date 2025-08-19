@@ -1,4 +1,4 @@
-# benchmark_analyzer/cli/main.py
+# cli.py - Actualizado para usar .env
 import typer
 from typing import Optional
 from pathlib import Path
@@ -10,8 +10,8 @@ from rich.table import Table
 from benchmark_analyzer.core.parser import ParserRegistry
 from benchmark_analyzer.core.loader import DataLoader
 from benchmark_analyzer.core.validator import SchemaValidator
-from benchmark_analyzer.db.connector import DatabaseManager
-from benchmark_analyzer.config import Config
+from benchmark_analyzer.db.connector import DatabaseManager, get_db_manager
+from benchmark_analyzer.config import Config, get_config
 
 # Create multiple typer apps for command grouping
 app = typer.Typer(
@@ -25,11 +25,11 @@ console = Console()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def init_database():
+def init_database(env_file: Optional[str] = None):
     """Initialize database connection and ensure tables exist."""
     try:
-        config = Config()
-        db_manager = DatabaseManager(config.db_url)
+        config = get_config(env_file)
+        db_manager = get_db_manager(config)
         db_manager.initialize_tables()
         return db_manager
     except Exception as e:
@@ -37,13 +37,20 @@ def init_database():
         raise typer.Exit(1)
 
 @app.callback()
-def callback():
+def callback(
+    env_file: Optional[str] = typer.Option(
+        None,
+        "--env-file",
+        "-e",
+        help="Path to environment (.env) file"
+    ),
+):
     """
     Benchmark Analyzer CLI - Tool for processing and analyzing benchmark results.
     """
     # This runs before any command
     try:
-        init_database()
+        init_database(env_file)
     except Exception as e:
         logger.error(f"Failed to initialize application: {e}")
         raise typer.Exit(1)
@@ -149,26 +156,6 @@ def list_test_types():
         table.add_row(test_type, schema_path)
 
     console.print(table)
-
-@app.command()
-def dashboard():
-    """Launch the Streamlit dashboard."""
-    try:
-        import streamlit.cli as stcli
-        import sys
-
-        # Get the path to the dashboard script
-        dashboard_path = Path(__file__).parent.parent / "dashboards" / "streamlit_app.py"
-
-        # Run Streamlit
-        sys.argv = ["streamlit", "run", str(dashboard_path)]
-        stcli.main()
-    except ImportError:
-        rprint("[red]✗[/red] Streamlit is not installed. Install it with: pip install streamlit")
-        raise typer.Exit(1)
-    except Exception as e:
-        rprint(f"[red]✗[/red] Failed to launch dashboard: {e}")
-        raise typer.Exit(1)
 
 # Add to DatabaseManager class in db/connector.py:
 def get_all_tables(self) -> list[str]:

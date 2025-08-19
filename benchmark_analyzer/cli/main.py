@@ -54,14 +54,13 @@ def setup_logging(verbose: bool = False) -> None:
         handlers=[RichHandler(rich_tracebacks=True)]
     )
 
-
-def initialize_app(config_file: Optional[str] = None) -> None:
+def initialize_app(env_file: Optional[str] = None) -> None:
     """Initialize application components."""
     global config, db_manager
 
     try:
         # Load configuration
-        config = get_config(config_file)
+        config = get_config(env_file)
 
         # Ensure directories exist
         config.ensure_directories()
@@ -81,11 +80,11 @@ def initialize_app(config_file: Optional[str] = None) -> None:
 
 @app.callback()
 def main(
-    config_file: Optional[str] = typer.Option(
+    env_file: Optional[str] = typer.Option(
         None,
-        "--config",
-        "-c",
-        help="Path to configuration file"
+        "--env-file",
+        "-e",
+        help="Path to environment (.env) file"
     ),
     verbose: bool = typer.Option(
         False,
@@ -98,8 +97,7 @@ def main(
     Benchmark Analyzer CLI - Tool for processing and analyzing benchmark results.
     """
     setup_logging(verbose)
-    initialize_app(config_file)
-
+    initialize_app(env_file)
 
 @app.command()
 def import_results(
@@ -440,33 +438,6 @@ def list_test_types():
     except Exception as e:
         rprint(f"[red]❌ Failed to list test types: {e}[/red]")
         raise typer.Exit(1)
-
-
-@app.command()
-def dashboard():
-    """Launch the Streamlit dashboard."""
-    try:
-        import streamlit.web.cli as stcli
-        import sys
-
-        # Get the path to the dashboard script
-        dashboard_path = Path(__file__).parent.parent / "dashboards" / "streamlit_app.py"
-
-        if not dashboard_path.exists():
-            rprint("[red]❌ Dashboard script not found[/red]")
-            raise typer.Exit(1)
-
-        # Run Streamlit
-        sys.argv = ["streamlit", "run", str(dashboard_path)]
-        stcli.main()
-
-    except ImportError:
-        rprint("[red]❌ Streamlit is not installed. Install it with: pip install streamlit[/red]")
-        raise typer.Exit(1)
-    except Exception as e:
-        rprint(f"[red]❌ Failed to launch dashboard: {e}[/red]")
-        raise typer.Exit(1)
-
 
 @schema_app.command("validate")
 def validate_schema(

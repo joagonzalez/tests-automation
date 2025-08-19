@@ -1,173 +1,160 @@
 # 🔧 Benchmark Analyzer Framework
 
-A comprehensive framework for analyzing hardware and software benchmark results. The framework decouples the execution of performance, stress, and benchmark tests from the components that import, process, and display the results.
+A comprehensive framework for analyzing hardware and software benchmark results with automated parsing, validation, storage, and visualization capabilities.
 
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+---
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Usage](#usage)
-- [API Documentation](#api-documentation)
-- [Development](#development)
-- [Configuration](#configuration)
-- [Testing](#testing)
-- [Contributing](#contributing)
-- [License](#license)
+- [🎯 Overview](#-overview)
+- [✨ Features](#-features)
+- [🏗️ Architecture](#-architecture)
+- [🚀 Quick Start](#-quick-start)
+- [📦 Installation](#-installation)
+- [💻 Usage](#-usage)
+- [🧪 Test Development Guide](#-test-development-guide)
+- [📚 API Documentation](#-api-documentation)
+- [🛠️ Development](#-development)
+- [⚙️ Configuration](#-configuration)
+- [🧪 Testing](#-testing)
+- [🤝 Contributing](#-contributing)
+
+---
 
 ## 🎯 Overview
 
-The Benchmark Analyzer Framework consists of two main components:
+The Benchmark Analyzer Framework provides a complete solution for managing benchmark test results across different hardware and software configurations. It automatically parses test outputs, validates against schemas, stores in a database, and provides rich visualization and analysis capabilities.
 
-1. **benchmark-runner**: CLI for executing tests (developed by external team)
-2. **benchmark-analyzer**: CLI and API for importing, processing, and analyzing results (this project)
+**Key Use Cases:**
+- Hardware performance validation and regression testing
+- Software optimization tracking across releases
+- A/B testing of system configurations
+- Performance baseline establishment
+- Automated CI/CD performance gates
 
-This framework enables teams to:
-- Execute benchmark tests in isolated environments
-- Import and validate test results using flexible schemas
-- Store results in a structured MySQL database
-- Visualize and analyze results through Grafana dashboards
-- Query and manage data via REST API
+---
 
 ## ✨ Features
 
 ### Core Features
-- 🔄 **Modular Test Result Processing**: Support for multiple test types with extensible parser system
-- 📊 **Schema Validation**: JSON Schema-based validation for test results, environments, and BOMs
-- 🗄️ **Database Storage**: MySQL-based storage with proper normalization and relationships
-- 🌐 **REST API**: FastAPI-based API for CRUD operations and data management
-- 📈 **Grafana Integration**: Pre-configured dashboards for result visualization
-- 🔧 **CLI Interface**: Comprehensive command-line tools for data management
+- **🔄 Automated Parsing**: Support for JSON, CSV, and ZIP package formats
+- **✅ Schema Validation**: JSON Schema-based validation for data integrity
+- **💾 Database Storage**: MySQL backend with optimized schema design
+- **🌐 REST API**: Full-featured API for programmatic access
+- **📊 Dashboard**: Interactive Grafana dashboards for visualization
+- **🐳 Docker Support**: Complete containerized deployment
+- **🛡️ Environment Isolation**: Environment-based configuration management
 
 ### Test Type Support
-- **CPU/Memory Benchmarks**: Sysbench, RAMspeed, custom CPU tests
-- **Extensible Parser System**: Easy addition of new test types
-- **Environment Management**: Hardware and software BOM tracking
-- **Result Validation**: Automated schema validation and error reporting
+- **CPU/Memory Tests**: Sysbench, RAMspeed, custom latency tests
+- **Network Tests**: iperf3, bandwidth, latency measurements
+- **Storage Tests**: fio, disk I/O performance
+- **Custom Tests**: Extensible parser system for new test types
 
 ### Infrastructure
-- 🐳 **Docker Compose**: Complete infrastructure stack
-- 🔐 **Security**: Authentication, CORS, rate limiting
-- 📝 **Comprehensive Logging**: Structured logging with multiple outputs
-- 🚀 **Production Ready**: Health checks, monitoring, metrics
+- **Database**: MySQL 8.0 with optimized performance schema
+- **API Server**: FastAPI with async support and auto-documentation
+- **Monitoring**: Grafana dashboards
+
+---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Test Operator  │    │  Test Analyst   │    │   Dashboard     │
-│     (CLI)       │    │     (CLI)       │    │   (Grafana)     │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          ▼                      ▼                      ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ benchmark-runner│    │benchmark-analyzer│   │   Grafana UI    │
-│   (External)    │    │      CLI        │    │                 │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          ▼                      ▼                      ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Test Results   │    │  REST API       │    │  MySQL Database │
-│   (ZIP files)   │    │   (FastAPI)     │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Test Results  │    │   CLI/API        │    │   Storage       │
+│                 │    │                  │    │                 │
+│ • JSON Files    │───▶│ • Parser System  │───▶│ • MySQL DB      │
+│ • CSV Data      │    │ • Validation     │    │ • File Storage  │
+│ • ZIP Packages  │    │ • Data Loading   │    │ • Artifacts     │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                │
+                                ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Visualization │    │   API Services   │    │   Monitoring    │
+│                 │    │                  │    │                 │
+│                 │◀───│ • REST API       │───▶│ • Grafana       │
+│ • Grafana       │    │ • Authentication │    │ • Prometheus    │
+│ • Custom Charts │    │ • File Upload    │    │ • Health Checks │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
 ### Component Overview
 
-- **CLI (benchmark-analyzer)**: Import results, manage data, query statistics
-- **REST API**: CRUD operations, file uploads, data validation
-- **Database Layer**: MySQL with SQLAlchemy ORM
-- **Parser System**: Modular parsers for different test result formats
-- **Validation Engine**: JSON Schema-based validation
-- **Configuration Management**: Environment-based configuration
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **CLI** | Typer + Rich | Command-line interface for operations |
+| **API** | FastAPI | REST API for programmatic access |
+| **Database** | MySQL 8.0 | Structured storage for test results |
+| **Parser System** | Custom Python | Extensible parsing for different formats |
+| **Validation** | JSON Schema | Data integrity and schema validation |
+| **Dashboard** | Grafana | Interactive data visualization |
+| **Infrastructure** | Docker Compose | Containerized deployment |
+
+---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
-- Python 3.8+
+- Python 3.12+ with [uv](https://github.com/astral-sh/uv) package manager
 - Docker and Docker Compose
-- uv package manager (recommended)
+- Git
 
 ### 1. Clone and Setup
 
 ```bash
+# Clone repository
 git clone <repository-url>
-cd tests-automation
+cd benchmark-analyzer
 
-# Install uv (if not already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# Install uv package manager
+make install-uv
 
-# Setup development environment
+# Set up development environment
 make setup
+
+# Copy environment configuration
+cp .env.example .env
+# Edit .env with your database credentials and settings
 ```
 
 ### 2. Start Infrastructure
 
 ```bash
-# Start MySQL, Grafana, and API services
+# Start all infrastructure services (MySQL, Grafana, API)
 make dev
+
+# Or start services individually
+make infra-up    # Start MySQL and Grafana
+make api-dev     # Start API in development mode
 ```
 
 ### 3. Import Sample Data
 
 ```bash
-# Import test results
-benchmark-analyzer import \
-  --package examples/cpu_mem_results.zip \
+# Load sample CPU/Memory test data
+make sample-data
+
+# Or import specific test data
+benchmark-analyzer import-results \
+  --package examples/sample_cpu_mem.zip \
   --type cpu_mem \
-  --environment benchmark_analyzer/contracts/environments/dev/environment.yaml \
   --engineer "Your Name" \
-  --comments "Sample benchmark results"
+  --comments "Initial test data"
 ```
 
 ### 4. Access Services
 
 - **API Documentation**: http://localhost:8000/docs
 - **Grafana Dashboard**: http://localhost:3000 (admin/admin123)
-- **API Health**: http://localhost:8000/health
 
-## 📦 Installation
-
-### Using uv (Recommended)
-
-```bash
-# Development installation
-uv pip install -e ".[dev]"
-
-# Production installation
-uv pip install -e .
-```
-
-### Using pip
-
-```bash
-# Development installation
-pip install -e ".[dev]"
-
-# Production installation
-pip install -e .
-```
-
-### Docker Installation
-
-```bash
-# Build and run with Docker Compose
-docker-compose -f infrastructure/docker-compose.yml up -d
-```
+---
 
 ## 💻 Usage
 
 ### CLI Usage
 
 #### Database Management
-
 ```bash
 # Initialize database
 benchmark-analyzer db init
@@ -175,24 +162,32 @@ benchmark-analyzer db init
 # Check database status
 benchmark-analyzer db status
 
-# Clean database (WARNING: Deletes all data)
+# Clean all data (warning: destructive!)
 benchmark-analyzer db clean --force
+
+# Create backup
+benchmark-analyzer db backup backups/backup_$(date +%Y%m%d).sql
 ```
 
 #### Importing Results
 
 ```bash
-# Import CPU/Memory benchmark results
-benchmark-analyzer import \
+# Import test results (updated command)
+benchmark-analyzer import-results \
   --package test_results_20240115.zip \
   --type cpu_mem \
-  --environment environments/production.yaml \
-  --bom boms/server_config.yaml \
   --engineer "John Doe" \
   --comments "Production baseline test"
 
+# Import with environment file (optional)
+benchmark-analyzer import-results \
+  --package test_results.zip \
+  --type cpu_mem \
+  --environment environments/production.yaml \
+  --engineer "John Doe"
+
 # Validate only (don't import)
-benchmark-analyzer import \
+benchmark-analyzer import-results \
   --package test_results.zip \
   --type cpu_mem \
   --validate-only
@@ -214,252 +209,603 @@ benchmark-analyzer query test-runs --engineer "John Doe"
 benchmark-analyzer query test-types
 ```
 
-#### Launching Dashboard
+#### Configuration and Utilities
 
 ```bash
-# Start Streamlit dashboard
+# Show current configuration
+benchmark-analyzer config-info
+
+# Validate schema against data
+benchmark-analyzer schema validate \
+  --schema contracts/tests/cpu_mem/schema.json \
+  --data test_data.json
+
+# Launch interactive dashboard
 benchmark-analyzer dashboard
 ```
 
 ### API Usage
 
 #### Health Check
-
 ```bash
 curl http://localhost:8000/health
 ```
 
 #### List Test Runs
-
 ```bash
-curl "http://localhost:8000/api/v1/test-runs?page=1&page_size=10"
+curl "http://localhost:8000/api/v1/test-runs?limit=10&test_type=cpu_mem"
 ```
 
 #### Get Test Run Details
-
 ```bash
-curl "http://localhost:8000/api/v1/test-runs/{test_run_id}"
+curl http://localhost:8000/api/v1/test-runs/{test_run_id}
 ```
 
 #### Upload Test Results
-
 ```bash
-curl -X POST "http://localhost:8000/api/v1/upload" \
-  -F "file=@test_results.zip" \
+curl -X POST "http://localhost:8000/api/v1/test-runs/upload" \
+  -F "test_package=@test_results.zip" \
   -F "test_type=cpu_mem" \
   -F "engineer=John Doe"
 ```
 
-### Python API Usage
+---
+
+## 🧪 Test Development Guide
+
+### Overview
+
+The framework uses a structured approach for defining, validating, and processing different types of benchmark tests. Each test type consists of:
+
+1. **JSON Schema**: Defines the expected data structure and validation rules
+2. **Parser Class**: Handles parsing of test result files
+3. **Database Model**: Stores structured results (optional, for complex types)
+4. **Validation Rules**: Ensures data integrity and completeness
+
+### Creating a New Test Type
+
+#### Step 1: Define the JSON Schema
+
+Create a schema file at `benchmark_analyzer/contracts/tests/{test_type}/schema.json`:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Network Latency Test Results Schema",
+  "description": "Schema for validating network latency test results",
+  "properties": {
+    "test_name": {
+      "type": "string",
+      "description": "Name of the test run",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of test execution"
+    },
+    "target_host": {
+      "type": "string",
+      "description": "Target host for latency test",
+      "format": "hostname"
+    },
+    "latency_stats": {
+      "type": "object",
+      "properties": {
+        "min_ms": {"type": "number", "minimum": 0},
+        "max_ms": {"type": "number", "minimum": 0},
+        "avg_ms": {"type": "number", "minimum": 0},
+        "stddev_ms": {"type": "number", "minimum": 0}
+      },
+      "required": ["min_ms", "max_ms", "avg_ms"]
+    },
+    "packet_loss_percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    }
+  },
+  "required": ["test_name", "timestamp", "target_host", "latency_stats"],
+  "additionalProperties": true
+}
+```
+
+#### Step 2: Create the Parser Class
+
+Create a parser in `benchmark_analyzer/core/parser.py` or a separate module:
 
 ```python
-from benchmark_analyzer import get_config, get_db_manager
-from benchmark_analyzer.core.loader import DataLoader
-from benchmark_analyzer.core.parser import ParserRegistry
+from benchmark_analyzer.core.parser import BaseParser, ParserRegistry
+import json
+import csv
+from pathlib import Path
+from typing import Dict, Any, List
 
-# Initialize components
-config = get_config()
-db_manager = get_db_manager()
-loader = DataLoader(config, db_manager)
+class NetworkLatencyParser(BaseParser):
+    """Parser for network latency test results."""
+    
+    def get_test_type(self) -> str:
+        """Get the test type identifier."""
+        return "network_latency"
+    
+    def get_supported_extensions(self) -> List[str]:
+        """Get list of supported file extensions."""
+        return ['.json', '.csv', '.txt']
+    
+    def parse_file(self, file_path: Path) -> Dict[str, Any]:
+        """Parse a single test result file."""
+        try:
+            if file_path.suffix.lower() == '.json':
+                return self._parse_json_file(file_path)
+            elif file_path.suffix.lower() == '.csv':
+                return self._parse_csv_file(file_path)
+            elif file_path.suffix.lower() == '.txt':
+                return self._parse_ping_output(file_path)
+            else:
+                raise ParseError(f"Unsupported file format: {file_path.suffix}")
+        except Exception as e:
+            raise ParseError(f"Failed to parse {file_path}: {e}")
+    
+    def _parse_json_file(self, file_path: Path) -> Dict[str, Any]:
+        """Parse JSON format test results."""
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return self.normalize_result(data)
+    
+    def _parse_csv_file(self, file_path: Path) -> Dict[str, Any]:
+        """Parse CSV format test results."""
+        with open(file_path, 'r') as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+        
+        # Convert first row or aggregate multiple rows
+        if len(rows) == 1:
+            return self.normalize_result(self._convert_types(rows[0]))
+        else:
+            # Aggregate multiple measurements
+            return self._aggregate_measurements(rows)
+    
+    def _parse_ping_output(self, file_path: Path) -> Dict[str, Any]:
+        """Parse ping command output."""
+        with open(file_path, 'r') as f:
+            content = f.read()
+        
+        # Extract statistics using regex
+        import re
+        
+        # Example ping output parsing
+        stats_pattern = r'min/avg/max/stddev = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+) ms'
+        loss_pattern = r'(\d+)% packet loss'
+        
+        stats_match = re.search(stats_pattern, content)
+        loss_match = re.search(loss_pattern, content)
+        
+        if not stats_match:
+            raise ParseError("Could not extract latency statistics from ping output")
+        
+        result = {
+            "test_name": file_path.stem,
+            "timestamp": datetime.now().isoformat(),
+            "target_host": self._extract_target_host(content),
+            "latency_stats": {
+                "min_ms": float(stats_match.group(1)),
+                "avg_ms": float(stats_match.group(2)),
+                "max_ms": float(stats_match.group(3)),
+                "stddev_ms": float(stats_match.group(4))
+            },
+            "packet_loss_percent": float(loss_match.group(1)) if loss_match else 0.0
+        }
+        
+        return self.normalize_result(result)
+    
+    def normalize_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize result to standard format."""
+        # Add timestamp if missing
+        if 'timestamp' not in result:
+            from datetime import datetime
+            result['timestamp'] = datetime.now().isoformat()
+        
+        # Ensure required structure
+        if 'latency_stats' not in result:
+            result['latency_stats'] = {}
+        
+        return result
+    
+    def validate_result_structure(self, result: Dict[str, Any]) -> bool:
+        """Validate the basic structure of parsed result."""
+        required_fields = ['test_name', 'target_host', 'latency_stats']
+        return all(field in result for field in required_fields)
 
-# Parse and load results
-parser = ParserRegistry.get_parser("cpu_mem")
-results = parser.parse_package("test_results.zip")
-test_run_id = loader.load_results("cpu_mem", results)
+# Register the parser
+ParserRegistry.register("network_latency", NetworkLatencyParser)
 ```
+
+#### Step 3: Create Database Model (Optional)
+
+For complex test types that need specific database tables, add a model in `benchmark_analyzer/db/models.py`:
+
+```python
+class ResultsNetworkLatency(Base):
+    """Results for Network Latency tests."""
+    
+    __tablename__ = "results_network_latency"
+    
+    test_run_id: Mapped[str] = mapped_column(
+        MYSQL_CHAR(36),
+        ForeignKey("test_runs.test_run_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    
+    # Target and configuration
+    target_host: Mapped[Optional[str]] = mapped_column(VARCHAR(255), nullable=True)
+    test_duration_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    packet_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # Latency statistics
+    min_latency_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    max_latency_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    avg_latency_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    stddev_latency_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    
+    # Additional metrics
+    packet_loss_percent: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    jitter_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    
+    # Relationships
+    test_run = relationship("TestRun", back_populates="results_network_latency")
+
+# Update MODEL_REGISTRY
+MODEL_REGISTRY["results_network_latency"] = ResultsNetworkLatency
+```
+
+#### Step 4: Update Data Loader
+
+Add support for the new test type in `benchmark_analyzer/core/loader.py`:
+
+```python
+def _load_test_results(
+    self,
+    session: Session,
+    test_run: TestRun,
+    test_type: str,
+    results: List[Dict[str, Any]],
+) -> None:
+    """Load test results into appropriate table."""
+    try:
+        if test_type == "cpu_mem":
+            self._load_cpu_mem_results(session, test_run, results)
+        elif test_type == "network_latency":
+            self._load_network_latency_results(session, test_run, results)
+        else:
+            logger.warning(f"No specific loader for test type {test_type}, skipping results")
+    except Exception as e:
+        logger.error(f"Failed to load test results for {test_type}: {e}")
+        raise
+
+def _load_network_latency_results(
+    self,
+    session: Session,
+    test_run: TestRun,
+    results: List[Dict[str, Any]],
+) -> None:
+    """Load Network Latency results."""
+    try:
+        # Aggregate results if multiple
+        aggregated_result = self._aggregate_network_latency_results(results)
+        
+        latency_result = ResultsNetworkLatency(
+            test_run_id=test_run.test_run_id,
+            target_host=aggregated_result.get('target_host'),
+            min_latency_ms=aggregated_result.get('latency_stats', {}).get('min_ms'),
+            max_latency_ms=aggregated_result.get('latency_stats', {}).get('max_ms'),
+            avg_latency_ms=aggregated_result.get('latency_stats', {}).get('avg_ms'),
+            stddev_latency_ms=aggregated_result.get('latency_stats', {}).get('stddev_ms'),
+            packet_loss_percent=aggregated_result.get('packet_loss_percent'),
+        )
+        
+        session.add(latency_result)
+        logger.debug(f"Added Network Latency results for test run {test_run.test_run_id}")
+        
+    except Exception as e:
+        logger.error(f"Failed to load Network Latency results: {e}")
+        raise
+```
+
+#### Step 5: Create BOM Schema (Optional)
+
+If your test type requires specific hardware/software configurations, create a BOM schema:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Network Latency Test BOM Schema",
+  "properties": {
+    "hardware": {
+      "type": "object",
+      "properties": {
+        "specs": {
+          "type": "object",
+          "properties": {
+            "network_interface": {"type": "string"},
+            "network_speed_gbps": {"type": "number"},
+            "network_driver": {"type": "string"}
+          }
+        }
+      }
+    },
+    "software": {
+      "type": "object",
+      "properties": {
+        "specs": {
+          "type": "object",
+          "properties": {
+            "ping_version": {"type": "string"},
+            "os_network_stack": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Schema Validation Process
+
+The framework automatically validates test results using a multi-layered approach:
+
+1. **JSON Schema Validation**: Structure and data type validation
+2. **Business Rule Validation**: Custom validation logic in parsers
+3. **Database Constraint Validation**: Foreign key and constraint validation
+4. **Cross-Reference Validation**: Consistency checks across related data
+
+### Testing Your New Test Type
+
+```bash
+# 1. Validate your schema
+benchmark-analyzer schema validate \
+  --schema contracts/tests/network_latency/schema.json \
+  --data sample_data.json
+
+# 2. Test parsing
+benchmark-analyzer import-results \
+  --package network_test_results.zip \
+  --type network_latency \
+  --validate-only
+
+# 3. Import test data
+benchmark-analyzer import-results \
+  --package network_test_results.zip \
+  --type network_latency \
+  --engineer "Test Engineer" \
+  --comments "Testing new parser"
+
+# 4. Verify data was stored correctly
+benchmark-analyzer query test-runs --type network_latency
+```
+
+### Best Practices
+
+1. **Schema Design**:
+   - Include comprehensive field descriptions
+   - Use appropriate data types and constraints
+   - Add examples in the schema
+   - Version your schemas for backwards compatibility
+
+2. **Parser Implementation**:
+   - Handle multiple input formats when possible
+   - Implement robust error handling
+   - Add comprehensive logging
+   - Normalize data to consistent units
+
+3. **Validation**:
+   - Test with real-world data samples
+   - Include edge cases in validation
+   - Validate both success and failure scenarios
+
+4. **Performance**:
+   - Consider data aggregation strategies
+   - Index important query fields in database models
+   - Implement efficient bulk loading for large datasets
+
+---
 
 ## 📚 API Documentation
 
 ### REST API Endpoints
 
 #### Health and Status
-- `GET /health` - Basic health check
-- `GET /health/detailed` - Detailed health with dependency status
-- `GET /health/metrics` - Application metrics
+- `GET /health` - API health check
+- `GET /api/v1/status` - Detailed system status
 
 #### Test Runs
-- `GET /api/v1/test-runs` - List test runs with filtering and pagination
-- `POST /api/v1/test-runs` - Create new test run
+- `GET /api/v1/test-runs` - List test runs with filtering
 - `GET /api/v1/test-runs/{id}` - Get specific test run
-- `PUT /api/v1/test-runs/{id}` - Update test run
+- `POST /api/v1/test-runs/upload` - Upload test results
 - `DELETE /api/v1/test-runs/{id}` - Delete test run
-- `GET /api/v1/test-runs/stats/overview` - Get test run statistics
 
 #### Test Types
 - `GET /api/v1/test-types` - List available test types
-- `POST /api/v1/test-types` - Create new test type
 - `GET /api/v1/test-types/{id}` - Get test type details
+- `POST /api/v1/test-types` - Create new test type
+- `PUT /api/v1/test-types/{id}` - Update test type
 
 #### Environments
 - `GET /api/v1/environments` - List environments
 - `POST /api/v1/environments` - Create environment
-- `GET /api/v1/environments/{id}` - Get environment details
+- `PUT /api/v1/environments/{id}` - Update environment
 
 #### File Upload
-- `POST /api/v1/upload` - Upload and process test result files
+- `POST /api/v1/upload` - Generic file upload endpoint
 
 ### API Response Format
 
-All API responses follow a consistent format:
-
+**Success Response:**
 ```json
 {
-  "data": { ... },
+  "data": {...},
   "message": "Success",
   "status_code": 200,
   "timestamp": "2024-01-15T14:30:00Z"
 }
 ```
 
-Error responses:
-
+**Error Response:**
 ```json
 {
-  "error": true,
-  "message": "Error description",
-  "details": { ... },
+  "error": "Validation failed",
+  "message": "Invalid test data format",
+  "details": ["Field 'test_name' is required"],
   "status_code": 400,
   "timestamp": "2024-01-15T14:30:00Z"
 }
 ```
+
+---
 
 ## 🛠️ Development
 
 ### Development Setup
 
 ```bash
-# Clone repository
+# 1. Clone and set up environment
 git clone <repository-url>
-cd tests-automation
-
-# Setup development environment
+cd benchmark-analyzer
 make setup
 
-# Start development infrastructure
+# 2. Start development environment
 make dev
 
-# Run in development mode
-make api-dev  # API with auto-reload
-make dashboard  # Streamlit dashboard
+# 3. Run quality checks
+make qa    # Format, lint, type check, and test
+
+# 4. Start API in development mode
+make api-dev
 ```
 
 ### Available Make Commands
 
+**Environment Setup:**
 ```bash
-# Environment setup
-make setup          # Setup development environment
-make install        # Install dependencies
-make update         # Update dependencies
-
-# Code quality
-make format         # Format code with ruff
-make lint           # Lint code with ruff
-make typecheck      # Run type checking with mypy
-make check          # Run all quality checks
-
-# Testing
-make test           # Run all tests
-make test-unit      # Run unit tests only
-make test-integration  # Run integration tests only
-make test-coverage  # Run tests with coverage
-
-# Application
-make cli            # Run CLI application
-make api            # Run API server
-make api-dev        # Run API with auto-reload
-make dashboard      # Launch dashboard
-
-# Database
-make db-init        # Initialize database
-make db-status      # Show database status
-make db-clean       # Clean database
-
-# Infrastructure
-make infra-up       # Start infrastructure services
-make infra-down     # Stop infrastructure services
-make infra-logs     # Show infrastructure logs
-
-# Development workflows
-make dev            # Start full development environment
-make dev-stop       # Stop development environment
-make dev-reset      # Reset development environment
-
-# Quality assurance
-make qa             # Run full QA pipeline
-make pre-commit     # Run pre-commit checks
-make ci             # Run CI pipeline
+make setup           # Set up development environment
+make install         # Install dependencies
+make update          # Update dependencies
+make clean           # Clean build artifacts
 ```
 
-### Adding New Test Types
-
-1. **Create Schema**: Add JSON schema in `benchmark_analyzer/contracts/tests/{test_type}/schema.json`
-
-2. **Create Parser**: Implement parser class extending `BaseParser`
-
-```python
-from benchmark_analyzer.core.parser import BaseParser, ParserRegistry
-
-class NewTestTypeParser(BaseParser):
-    def get_test_type(self) -> str:
-        return "new_test_type"
-    
-    def get_supported_extensions(self) -> List[str]:
-        return [".json", ".csv"]
-    
-    def parse_file(self, file_path: Path) -> Dict[str, Any]:
-        # Implementation here
-        pass
-
-# Register parser
-ParserRegistry.register("new_test_type", NewTestTypeParser)
+**Code Quality:**
+```bash
+make format          # Format code with ruff
+make lint            # Lint code
+make lint-fix        # Fix auto-fixable lint issues
+make typecheck       # Run type checking with mypy
+make check           # Run all quality checks
+make qa              # Full quality assurance pipeline
 ```
 
-3. **Create Database Model**: Add model in `benchmark_analyzer/db/models.py`
+**Testing:**
+```bash
+make test            # Run all tests
+make test-verbose    # Run tests with verbose output
+make test-coverage   # Run tests with coverage
+make test-unit       # Run unit tests only
+make test-integration # Run integration tests only
+make test-watch      # Run tests in watch mode
+```
 
-4. **Add API Endpoints**: Create endpoints in `api/endpoints/`
+**Infrastructure:**
+```bash
+make infra-up        # Start infrastructure services
+make infra-down      # Stop infrastructure services
+make infra-logs      # Show infrastructure logs
+make dev             # Start full development environment
+make dev-stop        # Stop development environment
+make dev-reset       # Reset development environment
+```
+
+**Database:**
+```bash
+make db-init         # Initialize database
+make db-status       # Show database status
+make db-clean        # Clean database (warning: destructive!)
+make db-backup       # Create database backup
+```
+
+**Application:**
+```bash
+make api             # Run API server
+make api-dev         # Run API server in development mode
+make cli             # Show CLI help
+```
+
+**Build and Release:**
+```bash
+make build           # Build package
+make publish-test    # Publish to test PyPI
+make publish         # Publish to PyPI
+```
 
 ### Project Structure
 
 ```
-tests-automation/
+benchmark-analyzer/
 ├── benchmark_analyzer/          # Main package
-│   ├── cli/                    # CLI interface
-│   ├── core/                   # Core components
-│   │   ├── parser.py          # Parser system
-│   │   ├── validator.py       # Schema validation
-│   │   └── loader.py          # Data loading
-│   ├── db/                    # Database layer
-│   │   ├── models.py          # SQLAlchemy models
-│   │   └── connector.py       # Database connection
-│   ├── dashboards/            # Streamlit dashboards
-│   ├── contracts/             # Schemas and contracts
-│   │   ├── tests/            # Test type schemas
-│   │   └── environments/     # Environment definitions
-│   └── config.py              # Configuration management
-├── api/                       # REST API
-│   ├── endpoints/             # API endpoints
-│   ├── services/              # Business logic services
-│   └── config/                # API configuration
-├── infrastructure/            # Docker and deployment
-├── tests/                     # Test suite
-│   ├── unit/                 # Unit tests
-│   └── integration/          # Integration tests
-├── docs/                      # Documentation
+│   ├── __init__.py
+│   ├── config.py               # Configuration management
+│   ├── cli/                    # Command-line interface
+│   │   └── main.py
+│   ├── core/                   # Core functionality
+│   │   ├── parser.py           # Parser system
+│   │   ├── validator.py        # Schema validation
+│   │   └── loader.py           # Data loading
+│   ├── db/                     # Database layer
+│   │   ├── models.py           # SQLAlchemy models
+│   │   └── connector.py        # Database connection
+│   ├── contracts/              # Schemas and contracts
+│   │   ├── environment_schema.json
+│   │   └── tests/              # Test type schemas
+│   │       ├── cpu_mem/
+│   │       ├── network_latency/
+│   │       └── ...
+│   └── dashboards/             # Dashboard implementations
+├── api/                        # REST API
+│   ├── main.py                 # FastAPI application
+│   ├── endpoints/              # API endpoints
+│   ├── models/                 # Pydantic models
+│   └── services/               # Business logic
+├── infrastructure/             # Deployment
+│   ├── docker-compose.yml      # Service definitions
+│   ├── Dockerfile.api          # API container
+│   └── grafana/                # Grafana configuration
+├── tests/                      # Test suite
+│   ├── unit/
+│   ├── integration/
+│   └── fixtures/
+├── examples/                   # Example data and configs
+├── docs/                       # Documentation
+├── .env.example               # Environment template
+├── pyproject.toml             # Project configuration
 ├── Makefile                   # Development commands
-└── pyproject.toml            # Project configuration
+└── README.md                  # This file
 ```
+
+---
 
 ## ⚙️ Configuration
 
 ### Environment Variables
 
-The framework uses environment variables for configuration. Copy `.env.example` to `.env` and update values:
+The framework uses environment variables loaded from `.env` files for all configuration. This replaces the previous YAML-based configuration approach.
 
 ```bash
+# Copy the example environment file
 cp .env.example .env
-```
 
-Key configuration sections:
+# Edit configuration values
+nano .env
+```
 
 #### Database Configuration
 ```bash
@@ -468,6 +814,7 @@ DB_PORT=3306
 DB_USER=benchmark
 DB_PASSWORD=benchmark123
 DB_NAME=perf_framework
+DB_DRIVER=pymysql
 ```
 
 #### API Configuration
@@ -475,32 +822,44 @@ DB_NAME=perf_framework
 API_HOST=0.0.0.0
 API_PORT=8000
 API_DEBUG=false
-SECRET_KEY=your-secret-key
+API_RELOAD=false
+API_WORKERS=1
+API_LOG_LEVEL=info
 ```
 
 #### Security Configuration
 ```bash
+SECRET_KEY=your-very-secret-key-change-in-production
 ENABLE_AUTH=false
 CORS_ORIGINS=*
+MAX_FILE_SIZE=104857600
 ```
 
-### Configuration Files
-
-#### YAML Configuration
-```yaml
-# config.yaml
-database:
-  host: localhost
-  port: 3306
-  username: benchmark
-  password: benchmark123
-api:
-  host: 0.0.0.0
-  port: 8000
-  debug: false
+#### Path Configuration
+```bash
+BASE_DIR=/app
+CONTRACTS_DIR=contracts
+TEST_TYPES_DIR=contracts/tests
+ENVIRONMENTS_DIR=contracts/environments
+ARTIFACTS_DIR=artifacts
+TEMP_DIR=temp
+UPLOAD_DIR=uploads
+LOGS_DIR=logs
 ```
 
-#### Environment Contracts
+#### Logging Configuration
+```bash
+LOG_LEVEL=INFO
+LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(message)s
+LOG_FILE_PATH=logs/benchmark-analyzer.log
+ENABLE_FILE_LOGGING=true
+```
+
+### Environment Files
+
+#### Environment Contracts (YAML)
+Environment files define the test execution context:
+
 ```yaml
 # environments/production.yaml
 name: "production"
@@ -508,12 +867,54 @@ type: "production"
 tools:
   python: "3.11.7"
   sysbench: "1.0.20"
+  gcc: "11.4.0"
 metadata:
   location: "datacenter-1"
   hardware:
     cpu_model: "Intel Xeon Gold 6230R"
     memory_total: "128GB"
+    network_interface: "10GbE"
+  software:
+    os: "Ubuntu 22.04.3 LTS"
+    kernel: "5.15.0-88-generic"
 ```
+
+#### BOM (Bill of Materials) Files
+BOM files specify exact hardware/software configurations:
+
+```yaml
+# boms/server_config.yaml
+hardware:
+  specs:
+    cpu:
+      model: "Intel Xeon Gold 6230R"
+      cores: 26
+      threads: 52
+      base_frequency: "2.10GHz"
+    memory:
+      total: "128GB"
+      type: "DDR4-3200"
+      modules: 8
+    storage:
+      type: "NVMe SSD"
+      capacity: "2TB"
+      model: "Samsung 980 PRO"
+
+software:
+  specs:
+    os:
+      name: "Ubuntu"
+      version: "22.04.3 LTS"
+      kernel: "5.15.0-88-generic"
+    compilers:
+      gcc: "11.4.0"
+      python: "3.11.7"
+    benchmarks:
+      sysbench: "1.0.20"
+      fio: "3.28"
+```
+
+---
 
 ## 🧪 Testing
 
@@ -527,155 +928,230 @@ make test
 make test-coverage
 
 # Run specific test categories
-make test-unit
-make test-integration
+make test-unit          # Unit tests only
+make test-integration   # Integration tests only
 
 # Run specific test file
 uv run pytest tests/unit/test_config.py -v
 
 # Run with specific markers
 uv run pytest -m "unit" -v
-uv run pytest -m "integration" -v
 uv run pytest -m "database" -v
+uv run pytest -m "slow" -v
+
+# Run tests in watch mode
+make test-watch
 ```
 
 ### Test Structure
 
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test component interactions
-- **API Tests**: Test REST API endpoints
-- **Database Tests**: Test database operations
+```
+tests/
+├── conftest.py              # Shared fixtures and configuration
+├── unit/                    # Unit tests
+│   ├── core/
+│   │   ├── test_parser.py
+│   │   ├── test_validator.py
+│   │   └── test_loader.py
+│   ├── db/
+│   │   ├── test_models.py
+│   │   └── test_connector.py
+│   └── api/
+│       ├── test_endpoints.py
+│       └── test_services.py
+├── integration/             # Integration tests
+│   ├── test_end_to_end.py
+│   ├── test_database_integration.py
+│   └── test_api_integration.py
+└── fixtures/               # Test data and fixtures
+    ├── sample_data/
+    ├── schemas/
+    └── environments/
+```
 
 ### Test Configuration
 
-Tests use a separate test database and configuration:
+Tests use pytest with custom configuration and fixtures:
 
 ```python
 # tests/conftest.py
+import pytest
+from benchmark_analyzer.config import Config
+from benchmark_analyzer.db.connector import DatabaseManager
+
 @pytest.fixture
 def test_config():
+    """Test configuration with in-memory database."""
+    return Config(".env.test")
+
+@pytest.fixture
+def db_manager(test_config):
+    """Database manager for testing."""
+    manager = DatabaseManager(test_config)
+    manager.initialize_tables()
+    yield manager
+    manager.clean_database()
+
+@pytest.fixture
+def sample_cpu_mem_data():
+    """Sample CPU/Memory test data."""
     return {
-        "database": {
-            "database": "test_perf_framework",
-            "host": "localhost"
-        }
+        "test_name": "cpu_mem_test_001",
+        "timestamp": "2024-01-15T14:30:00Z",
+        "sysbench_cpu_events_per_second": 15000,
+        "memory_idle_latency_ns": 120.5
     }
 ```
 
 ### Writing Tests
 
+Example test implementation:
+
 ```python
+# tests/unit/core/test_parser.py
 import pytest
-from benchmark_analyzer.core.parser import ParserRegistry
+from pathlib import Path
+from benchmark_analyzer.core.parser import ParserRegistry, CpuMemParser
 
 class TestCpuMemParser:
-    def test_parse_valid_json(self):
-        parser = ParserRegistry.get_parser("cpu_mem")
-        result = parser.parse_file("test_data/valid_result.json")
-        assert result["test_name"] == "cpu_test_001"
+    """Test CPU/Memory parser functionality."""
+    
+    def test_parse_valid_json(self, tmp_path):
+        """Test parsing valid JSON data."""
+        # Create test file
+        test_data = {
+            "test_name": "test_001",
+            "timestamp": "2024-01-15T14:30:00Z",
+            "sysbench_cpu_events_per_second": 15000
+        }
+        
+        test_file = tmp_path / "test.json"
+        test_file.write_text(json.dumps(test_data))
+        
+        # Parse and validate
+        parser = CpuMemParser()
+        result = parser.parse_file(test_file)
+        
+        assert result["test_name"] == "test_001"
+        assert result["sysbench_cpu_events_per_second"] == 15000
     
     @pytest.mark.integration
-    def test_database_integration(self, test_db):
-        # Integration test with database
+    def test_database_integration(self, db_manager, sample_cpu_mem_data):
+        """Test end-to-end parsing and storage."""
+        # Test implementation here
         pass
 ```
 
-## 🤝 Contributing
+---
 
-We welcome contributions! Please follow these guidelines:
+## 🤝 Contributing
 
 ### Development Workflow
 
 1. **Fork and Clone**
-```bash
-git clone <your-fork>
-cd tests-automation
-```
+   ```bash
+   git clone https://github.com/yourusername/benchmark-analyzer.git
+   cd benchmark-analyzer
+   ```
 
-2. **Create Feature Branch**
-```bash
-git checkout -b feature/your-feature-name
-```
+2. **Set Up Development Environment**
+   ```bash
+   make setup
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-3. **Setup Development Environment**
-```bash
-make setup
-make dev
-```
+3. **Create Feature Branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
 
-4. **Make Changes**
-- Follow code style guidelines
-- Add tests for new functionality
-- Update documentation
+4. **Make Changes and Test**
+   ```bash
+   # Make your changes
+   make qa              # Run all quality checks
+   make test-coverage   # Ensure tests pass with coverage
+   ```
 
-5. **Run Quality Checks**
-```bash
-make pre-commit
-```
+5. **Commit and Push**
+   ```bash
+   git add .
+   git commit -m "feat: add your feature description"
+   git push origin feature/your-feature-name
+   ```
 
-6. **Submit Pull Request**
-- Ensure all tests pass
-- Update CHANGELOG.md
-- Add clear description
+6. **Create Pull Request**
+   - Ensure CI checks pass
+   - Include comprehensive description
+   - Add tests for new functionality
+   - Update documentation as needed
 
 ### Code Style
 
-- **Python**: Follow PEP 8, use ruff for formatting and linting
-- **Type Hints**: Use type hints for all functions
-- **Docstrings**: Use Google-style docstrings
+- **Python**: Follow PEP 8, enforced by `ruff`
+- **Type Hints**: Required for all public APIs
+- **Docstrings**: Google-style docstrings for all public functions
 - **Testing**: Maintain >90% test coverage
+- **Commits**: Follow conventional commit messages
 
 ### Commit Messages
 
 Use conventional commit format:
 ```
-feat: add new CPU benchmark parser
-fix: resolve database connection timeout
-docs: update API documentation
-test: add integration tests for loader
+feat: add new network latency parser
+fix: resolve database connection timeout issue
+docs: update API documentation for new endpoints
+test: add integration tests for parser system
+refactor: simplify configuration loading logic
 ```
+
+---
 
 ## 📝 Changelog
 
 ### [0.1.0] - 2024-01-15
 
 #### Added
-- Initial framework implementation
-- CLI interface for importing and querying results
-- REST API with FastAPI
-- MySQL database with SQLAlchemy models
-- JSON Schema validation system
-- Modular parser system for test results
-- Docker Compose infrastructure
-- Comprehensive test suite
-- Configuration management system
-- Development tooling and CI/CD
+- **Core Framework**: Complete benchmark analysis framework
+- **CLI Interface**: Comprehensive command-line tool with Typer and Rich
+- **REST API**: FastAPI-based API with auto-documentation
+- **Database Schema**: Optimized MySQL schema for performance data
+- **Parser System**: Extensible parser system for multiple formats
+- **Validation System**: JSON Schema-based validation
+- **Configuration Management**: Environment variable-based configuration
+- **Docker Support**: Complete containerized deployment
+- **Dashboard**: Interactive Grafana dashboard
+- **Infrastructure**: Docker Compose setup with monitoring
 
 #### Supported Test Types
-- CPU/Memory benchmarks (Sysbench, RAMspeed)
-- Extensible parser framework for future test types
+- **CPU/Memory**: Sysbench CPU and memory benchmarks
+- **Custom Extensions**: Framework for adding new test types
 
 #### Infrastructure
-- MySQL 8.4 database
-- Grafana 10.2 dashboards
-- FastAPI REST API
-- Docker containerization
+- **MySQL 8.0**: Primary database with performance optimizations
+- **Grafana**: Visualization and monitoring dashboards
+- **Redis**: Caching layer for API performance
+- **Nginx**: Production-ready reverse proxy
+
+---
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+---
+
 ## 🆘 Support
 
 ### Documentation
 - **API Docs**: http://localhost:8000/docs (when running)
-- **Project Wiki**: [GitHub Wiki](link-to-wiki)
-- **Examples**: Check `examples/` directory
+- **Schema Reference**: See `benchmark_analyzer/contracts/` directory
+- **Examples**: Check `examples/` directory for sample data and configurations
 
 ### Getting Help
-- **Issues**: [GitHub Issues](link-to-issues)
-- **Discussions**: [GitHub Discussions](link-to-discussions)
-- **Email**: benchmark-analyzer@company.com
+- **Issues**: Report bugs and request features via GitHub Issues
+- **Discussions**: Join community discussions for questions and ideas
+- **Contributing**: See [Contributing](#-contributing) section for development guidelines
 
 ### Troubleshooting
 
@@ -684,25 +1160,28 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Database Connection Failed**
 ```bash
 # Check if MySQL is running
-make infra-logs
+make infra-status
 
-# Verify database configuration
+# Verify connection settings
 benchmark-analyzer config-info
 
-# Test database connection
-benchmark-analyzer db status
+# Reset database
+make db-clean
+make db-init
 ```
 
 **Import Validation Errors**
 ```bash
-# Validate files before import
-benchmark-analyzer import --validate-only --package results.zip --type cpu_mem
+# Validate schema separately
+benchmark-analyzer schema validate \
+  --schema contracts/tests/cpu_mem/schema.json \
+  --data your_data.json
 
-# Check available test types
+# Check parser registration
 benchmark-analyzer query test-types
 ```
 
-**API Not Responding**
+**API Service Unavailable**
 ```bash
 # Check API health
 curl http://localhost:8000/health
@@ -714,12 +1193,32 @@ make infra-logs
 make api-dev
 ```
 
+**Parser Not Found**
+```bash
+# List available parsers
+benchmark-analyzer query test-types
+
+# Check parser registration in core/parser.py
+# Ensure ParserRegistry.register() is called
+```
+
 #### Performance Optimization
 
-- **Database**: Tune MySQL configuration for your workload
-- **API**: Adjust worker count and connection pooling
-- **Caching**: Enable Redis caching for frequently accessed data
+**Large Dataset Import**
+- Use batch processing for large ZIP files
+- Consider database indexing for frequent queries
+- Monitor memory usage during import operations
+
+**API Performance**
+- Enable Redis caching in production
+- Use pagination for large result sets
+- Implement database connection pooling
+
+**Dashboard Performance**  
+- Limit data ranges for visualization
+- Use aggregated views for historical data
+- Implement data sampling for large datasets
 
 ---
 
-**Built with ❤️ by the Benchmark Analyzer Team**
+*For more detailed information, please refer to the individual component documentation in the `docs/` directory.*

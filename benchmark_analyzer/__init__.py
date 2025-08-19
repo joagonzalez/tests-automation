@@ -8,7 +8,7 @@ from various hardware and software environments. It includes:
 - Database models for storing benchmark data
 - Parsers for different test result formats
 - Validation schemas for test results
-- Configuration management
+- Configuration management via environment variables
 - API for accessing stored results
 
 Example:
@@ -16,7 +16,7 @@ Example:
 
     >>> from benchmark_analyzer.config import get_config
     >>> from benchmark_analyzer.core.parser import ParserRegistry
-    >>> config = get_config()
+    >>> config = get_config()  # Loads from .env file
     >>> parser = ParserRegistry.get_parser("cpu_mem")
 """
 
