@@ -1,0 +1,2 @@
+test_name,timestamp,throughput_mbps,latency_ms,packet_loss_percent,test_duration_sec
+network_iperf3_tcp_001,2024-01-15T10:30:00Z,940.5,0.245,0.01,60

@@ -184,6 +184,7 @@ class TestRun(Base):
     hw_bom = relationship("HardwareBOM", back_populates="test_runs")
     sw_bom = relationship("SoftwareBOM", back_populates="test_runs")
     results_cpu_mem = relationship("ResultsCpuMem", back_populates="test_run")
+    results_network = relationship("ResultsNetwork", back_populates="test_run")
 
     def __repr__(self) -> str:
         return f"<TestRun(test_run_id='{self.test_run_id}', created_at='{self.created_at}')>"
@@ -291,6 +292,35 @@ class TestRunsSummaryView(Base):
         return f"<TestRunsSummaryView(test_run_id='{self.test_run_id}', test_name='{self.test_name}')>"
 
 
+class ResultsNetwork(Base):
+    """Results for Network performance tests."""
+
+    __tablename__ = "results_network"
+
+    test_run_id: Mapped[str] = mapped_column(
+        MYSQL_CHAR(36),
+        ForeignKey("test_runs.test_run_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+    # Network metrics
+    throughput_mbps: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    latency_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    packet_loss_percent: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    test_duration_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Additional network metrics
+    jitter_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    bandwidth_utilization_percent: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    connection_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Relationships
+    test_run = relationship("TestRun", back_populates="results_network")
+
+    def __repr__(self) -> str:
+        return f"<ResultsNetwork(test_run_id='{self.test_run_id}', throughput_mbps={self.throughput_mbps})>"
+
+
 # Model registry for dynamic access
 MODEL_REGISTRY = {
     "operators": Operator,
@@ -300,6 +330,7 @@ MODEL_REGISTRY = {
     "sw_bom": SoftwareBOM,
     "test_runs": TestRun,
     "results_cpu_mem": ResultsCpuMem,
+    "results_network": ResultsNetwork,
     "acceptance_criteria": AcceptanceCriteria,
     "v_test_runs_summary": TestRunsSummaryView,
 }

@@ -1,0 +1,23 @@
+hardware:
+  specs:
+    manufacturer: "Dell"
+    model: "PowerEdge R650"
+    network_adapter:
+      model: "Intel X550-T2"
+      ports: 2
+      speed: "10GbE"
+      interface: "RJ45"
+    switch:
+      model: "Cisco Catalyst 9300-48T"
+      ports: "48x1GbE"
+      uplinks: "4x10GbE"
+    cables:
+      type: "Cat6A"
+      length: "3m"
+
+software:
+  specs:
+    iperf_version: "3.12"
+    driver_version: "5.13.0"
+    network_stack: "Linux TCP/IP"
+    kernel_version: "5.15.0-88-generic"

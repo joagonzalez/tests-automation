@@ -1,0 +1,42 @@
+name: "network-lab-01"
+type: "lab"
+comments: "Network performance testing lab environment"
+
+tools:
+  iperf3:
+    version: "3.12"
+    command: "iperf3"
+    options:
+      port: 5201
+      parallel: 1
+      time: 60
+
+metadata:
+  location: "Network Lab - Switch Rack 1"
+  rack: "NET-LAB-R01"
+  datacenter: "main-lab"
+  environment_owner: "network-team"
+  contact_email: "network-team@company.com"
+
+  hardware:
+    switch_model: "Cisco Catalyst 9300"
+    switch_ports: "48x1GbE + 4x10GbE"
+    server_nic: "Intel X550-T2"
+    cable_type: "Cat6A"
+
+  software:
+    operating_system: "Ubuntu 22.04.3 LTS"
+    kernel_version: "5.15.0-88-generic"
+    iperf3_version: "3.12"
+
+  network:
+    test_subnet: "192.168.100.0/24"
+    server_ip: "192.168.100.10"
+    client_ip: "192.168.100.11"
+    mtu: 1500
+
+  tags:
+    - "network"
+    - "performance"
+    - "lab"
+    - "gigabit"

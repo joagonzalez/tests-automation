@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Network Performance Test Results Schema",
+  "description": "Schema for validating network performance test results",
+  "properties": {
+    "test_name": {
+      "type": "string",
+      "description": "Name of the network test",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of test execution"
+    },
+    "throughput_mbps": {
+      "type": "number",
+      "description": "Network throughput in Mbps",
+      "minimum": 0
+    },
+    "latency_ms": {
+      "type": "number",
+      "description": "Network latency in milliseconds",
+      "minimum": 0
+    },
+    "packet_loss_percent": {
+      "type": "number",
+      "description": "Packet loss percentage",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "test_duration_sec": {
+      "type": "integer",
+      "description": "Test duration in seconds",
+      "minimum": 1
+    }
+  },
+  "required": ["test_name", "timestamp", "throughput_mbps"],
+  "additionalProperties": true
+}

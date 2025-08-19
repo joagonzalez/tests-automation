@@ -281,6 +281,34 @@ class CpuMemParser(JSONParser):
         return has_cpu or has_memory
 
 
+class NetworkParser(CSVParser):
+    """Parser for network performance test results."""
+
+    def get_test_type(self) -> str:
+        """Get test type."""
+        return "network"
+
+    def normalize_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize network result."""
+        # Add timestamp if not present
+        if 'timestamp' not in result:
+            from datetime import datetime
+            result['timestamp'] = datetime.now().isoformat()
+
+        # Ensure required fields exist
+        required_fields = ['test_name', 'throughput_mbps']
+        for field in required_fields:
+            if field not in result:
+                logger.warning(f"Missing required field '{field}' in network result")
+
+        return result
+
+    def validate_result_structure(self, result: Dict[str, Any]) -> bool:
+        """Validate network result structure."""
+        required_fields = ['test_name', 'throughput_mbps']
+        return all(field in result for field in required_fields)
+
+
 class ParserRegistry:
     """Registry for managing test result parsers."""
 
@@ -345,7 +373,7 @@ class ParserRegistry:
 ParserRegistry.register("memory_bandwidth", MemoryBandwidthParser)
 ParserRegistry.register("cpu_latency", CpuLatencyParser)
 ParserRegistry.register("cpu_mem", CpuMemParser)
-
+ParserRegistry.register("network", NetworkParser)
 
 class ParserFactory:
     """Factory for creating parsers."""
