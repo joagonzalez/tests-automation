@@ -195,6 +195,7 @@ class TestRun(Base):
     hw_bom = relationship("HardwareBOM", back_populates="test_runs")
     sw_bom = relationship("SoftwareBOM", back_populates="test_runs")
     results_cpu_mem = relationship("ResultsCpuMem", back_populates="test_run")
+    results_network_perf = relationship("ResultsNetworkPerf", back_populates="test_run")
 
     def __repr__(self) -> str:
         return f"<TestRun(test_run_id='{self.test_run_id}', created_at='{self.created_at}')>"
@@ -248,6 +249,52 @@ class ResultsCpuMem(Base):
 
     def __repr__(self) -> str:
         return f"<ResultsCpuMem(test_run_id='{self.test_run_id}')>"
+
+
+class ResultsNetworkPerf(Base):
+    """Results for Network Performance tests."""
+
+    __tablename__ = "results_network_perf"
+
+    test_run_id: Mapped[str] = mapped_column(
+        MYSQL_CHAR(36),
+        ForeignKey("test_runs.test_run_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+    # Latency metrics (in milliseconds)
+    tcp_latency_avg_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    tcp_latency_min_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    tcp_latency_max_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    udp_latency_avg_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    udp_latency_min_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    udp_latency_max_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+
+    # Throughput metrics (in Mbps)
+    tcp_throughput_mbps: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    udp_throughput_mbps: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    download_bandwidth_mbps: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    upload_bandwidth_mbps: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+
+    # Connection metrics
+    connection_establishment_time_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    connections_per_second: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Quality metrics
+    packet_loss_percent: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+    jitter_ms: Mapped[Optional[float]] = mapped_column(DOUBLE, nullable=True)
+
+    # Test configuration
+    test_duration_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    concurrent_connections: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    packet_size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    test_tool: Mapped[Optional[str]] = mapped_column(VARCHAR(32), nullable=True)
+
+    # Relationships
+    test_run = relationship("TestRun", back_populates="results_network_perf")
+
+    def __repr__(self) -> str:
+        return f"<ResultsNetworkPerf(test_run_id='{self.test_run_id}')>"
 
 
 class AcceptanceCriteria(Base):
@@ -311,6 +358,7 @@ MODEL_REGISTRY = {
     "sw_bom": SoftwareBOM,
     "test_runs": TestRun,
     "results_cpu_mem": ResultsCpuMem,
+    "results_network_perf": ResultsNetworkPerf,
     "acceptance_criteria": AcceptanceCriteria,
     "v_test_runs_summary": TestRunsSummaryView,
 }

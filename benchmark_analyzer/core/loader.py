@@ -21,6 +21,7 @@ from ..db.models import (
     TestType,
     TestRun,
     ResultsCpuMem,
+    ResultsNetworkPerf,
     calculate_specs_hash,
 )
 
@@ -275,6 +276,8 @@ class DataLoader:
         try:
             if test_type == "cpu_mem":
                 self._load_cpu_mem_results(session, test_run, results)
+            elif test_type == "network_perf":
+                self._load_network_perf_results(session, test_run, results)
             else:
                 # For other test types, we could dynamically create tables
                 # For now, log a warning
@@ -316,6 +319,46 @@ class DataLoader:
             logger.error(f"Failed to load CPU/Memory results: {e}")
             raise
 
+    def _load_network_perf_results(
+        self,
+        session: Session,
+        test_run: TestRun,
+        results: List[Dict[str, Any]],
+    ) -> None:
+        """Load Network Performance results into results_network_perf table."""
+        try:
+            # Aggregate all results into a single record
+            aggregated_result = self._aggregate_network_perf_results(results)
+
+            network_perf_result = ResultsNetworkPerf(
+                test_run_id=test_run.test_run_id,
+                tcp_latency_avg_ms=aggregated_result.get('tcp_latency_avg_ms'),
+                tcp_latency_min_ms=aggregated_result.get('tcp_latency_min_ms'),
+                tcp_latency_max_ms=aggregated_result.get('tcp_latency_max_ms'),
+                udp_latency_avg_ms=aggregated_result.get('udp_latency_avg_ms'),
+                udp_latency_min_ms=aggregated_result.get('udp_latency_min_ms'),
+                udp_latency_max_ms=aggregated_result.get('udp_latency_max_ms'),
+                tcp_throughput_mbps=aggregated_result.get('tcp_throughput_mbps'),
+                udp_throughput_mbps=aggregated_result.get('udp_throughput_mbps'),
+                download_bandwidth_mbps=aggregated_result.get('download_bandwidth_mbps'),
+                upload_bandwidth_mbps=aggregated_result.get('upload_bandwidth_mbps'),
+                connection_establishment_time_ms=aggregated_result.get('connection_establishment_time_ms'),
+                connections_per_second=aggregated_result.get('connections_per_second'),
+                packet_loss_percent=aggregated_result.get('packet_loss_percent'),
+                jitter_ms=aggregated_result.get('jitter_ms'),
+                test_duration_sec=aggregated_result.get('test_duration_sec'),
+                concurrent_connections=aggregated_result.get('concurrent_connections'),
+                packet_size_bytes=aggregated_result.get('packet_size_bytes'),
+                test_tool=aggregated_result.get('test_tool'),
+            )
+
+            session.add(network_perf_result)
+            logger.debug(f"Added Network Performance results for test run {test_run.test_run_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to load Network Performance results: {e}")
+            raise
+
     def _aggregate_cpu_mem_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Aggregate multiple CPU/Memory results into a single record."""
         aggregated = {}
@@ -323,6 +366,21 @@ class DataLoader:
         for result in results:
             for key, value in result.items():
                 if key.startswith(('memory_', 'ramspeed_', 'sysbench_')):
+                    # For numeric values, take the last one or average if needed
+                    if isinstance(value, (int, float)):
+                        aggregated[key] = value
+                    elif isinstance(value, str):
+                        aggregated[key] = value
+
+        return aggregated
+
+    def _aggregate_network_perf_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Aggregate multiple Network Performance results into a single record."""
+        aggregated = {}
+
+        for result in results:
+            for key, value in result.items():
+                if key.startswith(('tcp_', 'udp_', 'download_', 'upload_', 'connection_', 'packet_', 'jitter_', 'test_')):
                     # For numeric values, take the last one or average if needed
                     if isinstance(value, (int, float)):
                         aggregated[key] = value
@@ -482,6 +540,7 @@ class DataLoader:
                     'total_hw_boms': session.query(HardwareBOM).count(),
                     'total_sw_boms': session.query(SoftwareBOM).count(),
                     'total_cpu_mem_results': session.query(ResultsCpuMem).count(),
+                    'total_network_perf_results': session.query(ResultsNetworkPerf).count(),
                 }
 
                 # Get test runs by type

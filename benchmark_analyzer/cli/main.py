@@ -13,10 +13,9 @@ from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ..config import Config, get_config
-from ..core.loader import DataLoader, LoaderError
+from ..core.api_loader import APILoader, APILoaderError
 from ..core.parser import ParserRegistry, ParseError
 from ..core.validator import SchemaValidator, ValidationResult
-from ..db.connector import DatabaseManager, get_db_manager
 
 # Create the main CLI app
 app = typer.Typer(
@@ -40,7 +39,7 @@ console = Console()
 
 # Global state
 config: Optional[Config] = None
-db_manager: Optional[DatabaseManager] = None
+api_loader: Optional[APILoader] = None
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -56,7 +55,7 @@ def setup_logging(verbose: bool = False) -> None:
 
 def initialize_app(env_file: Optional[str] = None) -> None:
     """Initialize application components."""
-    global config, db_manager
+    global config, api_loader
 
     try:
         # Load configuration
@@ -65,13 +64,11 @@ def initialize_app(env_file: Optional[str] = None) -> None:
         # Ensure directories exist
         config.ensure_directories()
 
-        # Initialize database manager
-        db_manager = get_db_manager(config)
+        # Initialize API loader
+        api_loader = APILoader(config)
 
-        # Test database connection
-        if not db_manager.test_connection():
-            rprint("[red]❌ Database connection failed[/red]")
-            raise typer.Exit(1)
+        # Test API connection
+        api_loader.api_client.health_check()
 
     except Exception as e:
         rprint(f"[red]❌ Failed to initialize application: {e}[/red]")
@@ -204,25 +201,28 @@ def import_results(
                 rprint("[blue]ℹ️  Validation-only mode, skipping import[/blue]")
                 return
 
-            # Import results
+            # Import results via API
             progress.update(task, description="Importing results...")
-            loader = DataLoader(config, db_manager)
 
-            test_run_id = loader.load_results(
-                test_type=test_type,
-                results=results,
-                environment_file=environment,
-                bom_file=bom,
-                engineer=engineer,
-                comments=comments
-            )
+            try:
+                test_run_id = api_loader.load_results(
+                    test_type=test_type,
+                    results=results,
+                    environment_file=environment,
+                    bom_file=bom,
+                    engineer=engineer,
+                    comments=comments
+                )
+            except APILoaderError as e:
+                rprint(f"[red]❌ Import failed: {e}[/red]")
+                raise typer.Exit(1)
 
             progress.update(task, description="Import completed", total=1, completed=1)
 
         rprint(f"[green]✅ Successfully imported {len(results)} results[/green]")
         rprint(f"[blue]Test Run ID: {test_run_id}[/blue]")
 
-    except (ParseError, LoaderError) as e:
+    except (ParseError, APILoaderError) as e:
         rprint(f"[red]❌ {e}[/red]")
         raise typer.Exit(1)
     except Exception as e:
@@ -239,16 +239,19 @@ def init_database():
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Initializing database...", total=None)
+            task = progress.add_task("Checking API status...", total=None)
 
-            db_manager.initialize_tables()
+            # Just check API health - database initialization is handled by API
+            health = api_loader.api_client.health_check()
 
-            progress.update(task, description="Database initialized", total=1, completed=1)
+            progress.update(task, description="API status checked", total=1, completed=1)
 
-        rprint("[green]✅ Database initialized successfully[/green]")
+        rprint("[green]✅ API is healthy and ready[/green]")
+        if health.get("database_status"):
+            rprint(f"[blue]Database status: {health['database_status']}[/blue]")
 
     except Exception as e:
-        rprint(f"[red]❌ Failed to initialize database: {e}[/red]")
+        rprint(f"[red]❌ Failed to check API status: {e}[/red]")
         raise typer.Exit(1)
 
 
@@ -256,36 +259,37 @@ def init_database():
 def database_status():
     """Show database status and statistics."""
     try:
-        status = db_manager.get_database_status()
+        # Get API health which includes database status
+        health = api_loader.api_client.health_check()
 
-        # Connection status
-        if status["connection"]:
-            rprint("[green]✅ Database connection: OK[/green]")
-        else:
-            rprint("[red]❌ Database connection: FAILED[/red]")
-            if "error" in status:
-                rprint(f"Error: {status['error']}")
-            return
+        # Get results statistics
+        stats = api_loader.api_client.get_results_stats()
 
-        # Tables overview
-        table = Table(title="Database Tables")
-        table.add_column("Table Name", style="cyan")
-        table.add_column("Row Count", justify="right", style="green")
+        rprint("[green]✅ API connection: OK[/green]")
 
-        for table_name, count in status["tables"].items():
-            if isinstance(count, int):
-                table.add_row(table_name, f"{count:,}")
-            else:
-                table.add_row(table_name, str(count))
+        if health.get("database_status"):
+            rprint(f"[green]✅ Database status: {health['database_status']}[/green]")
+
+        # Show statistics
+        table = Table(title="Database Statistics")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Count", justify="right", style="green")
+
+        if "total_results" in stats:
+            table.add_row("Total Results", f"{stats['total_results']:,}")
+
+        if "results_by_test_type" in stats:
+            for test_type, count in stats["results_by_test_type"].items():
+                table.add_row(f"Results ({test_type})", f"{count:,}")
+
+        if "results_by_environment" in stats:
+            for env, count in stats["results_by_environment"].items():
+                table.add_row(f"Results ({env})", f"{count:,}")
 
         console.print(table)
 
-        # Summary
-        if isinstance(status["total_rows"], int):
-            rprint(f"\n[blue]Total rows: {status['total_rows']:,}[/blue]")
-
     except Exception as e:
-        rprint(f"[red]❌ Failed to get database status: {e}[/red]")
+        rprint(f"[red]❌ Failed to get status: {e}[/red]")
         raise typer.Exit(1)
 
 
@@ -313,16 +317,14 @@ def clean_database(
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Cleaning database...", total=None)
+            task = progress.add_task("This operation is not available via API...", total=None)
+            progress.update(task, description="Operation not supported", total=1, completed=1)
 
-            db_manager.clean_database()
-
-            progress.update(task, description="Database cleaned", total=1, completed=1)
-
-        rprint("[green]✅ Database cleaned successfully[/green]")
+        rprint("[yellow]⚠️  Database cleaning not available via API[/yellow]")
+        rprint("[blue]Contact your administrator for database maintenance[/blue]")
 
     except Exception as e:
-        rprint(f"[red]❌ Failed to clean database: {e}[/red]")
+        rprint(f"[red]❌ Operation failed: {e}[/red]")
         raise typer.Exit(1)
 
 
@@ -359,8 +361,7 @@ def list_test_runs(
 ):
     """List test runs with optional filtering."""
     try:
-        loader = DataLoader(config, db_manager)
-        test_runs = loader.list_test_runs(
+        test_runs = api_loader.list_test_runs(
             test_type=test_type,
             environment=environment,
             engineer=engineer,
@@ -383,9 +384,9 @@ def list_test_runs(
         for run in test_runs:
             table.add_row(
                 run["test_run_id"][:8] + "...",  # Truncate ID
-                run["test_type"] or "N/A",
-                run["environment"] or "N/A",
-                run["engineer"] or "N/A",
+                run.get("test_type_name") or "N/A",
+                run.get("environment_name") or "N/A",
+                run.get("engineer") or "N/A",
                 run["created_at"][:19]  # Remove microseconds
             )
 
@@ -403,35 +404,34 @@ def list_test_runs(
 def list_test_types():
     """List available test types."""
     try:
-        # Get registered test types
-        registered_types = ParserRegistry.get_available_test_types()
+        # Get test types from API
+        test_types = api_loader.api_client.list_test_types()
 
-        # Get schema validator
-        validator = SchemaValidator(config)
-        schema_types = validator.get_supported_test_types()
+        # Get registered parser types locally
+        registered_types = ParserRegistry.get_available_test_types()
 
         table = Table(title="Test Types")
         table.add_column("Test Type", style="cyan")
         table.add_column("Parser", style="green")
-        table.add_column("Schema", style="blue")
+        table.add_column("API", style="blue")
         table.add_column("Description", style="yellow")
 
-        all_types = set(registered_types + schema_types)
+        # Show API test types
+        api_type_names = [tt.get("name", "") for tt in test_types]
+        all_types = set(registered_types + api_type_names)
 
         for test_type in sorted(all_types):
             has_parser = "✅" if test_type in registered_types else "❌"
-            has_schema = "✅" if test_type in schema_types else "❌"
+            has_api = "✅" if test_type in api_type_names else "❌"
 
-            # Get parser info if available
+            # Get description from API if available
             description = "N/A"
-            if test_type in registered_types:
-                try:
-                    parser_info = ParserRegistry.get_parser_info(test_type)
-                    description = parser_info.get("class_name", "N/A")
-                except Exception:
-                    pass
+            for tt in test_types:
+                if tt.get("name") == test_type:
+                    description = tt.get("description", "N/A")
+                    break
 
-            table.add_row(test_type, has_parser, has_schema, description)
+            table.add_row(test_type, has_parser, has_api, description)
 
         console.print(table)
 

@@ -281,6 +281,57 @@ class CpuMemParser(JSONParser):
         return has_cpu or has_memory
 
 
+class NetworkPerfParser(JSONParser):
+    """Parser for Network Performance benchmark results."""
+
+    def get_test_type(self) -> str:
+        """Get test type."""
+        return "network_perf"
+
+    def normalize_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize Network Performance result."""
+        # Add timestamp if not present
+        if 'timestamp' not in result:
+            from datetime import datetime
+            result['timestamp'] = datetime.now().isoformat()
+
+        return result
+
+    def validate_result_structure(self, result: Dict[str, Any]) -> bool:
+        """Validate Network Performance result structure."""
+        # Check for at least one network metric
+        latency_metrics = [
+            'tcp_latency_avg_ms',
+            'udp_latency_avg_ms',
+            'tcp_latency_min_ms',
+            'udp_latency_min_ms'
+        ]
+
+        throughput_metrics = [
+            'tcp_throughput_mbps',
+            'udp_throughput_mbps',
+            'download_bandwidth_mbps',
+            'upload_bandwidth_mbps'
+        ]
+
+        connection_metrics = [
+            'connection_establishment_time_ms',
+            'connections_per_second'
+        ]
+
+        quality_metrics = [
+            'packet_loss_percent',
+            'jitter_ms'
+        ]
+
+        has_latency = any(metric in result for metric in latency_metrics)
+        has_throughput = any(metric in result for metric in throughput_metrics)
+        has_connection = any(metric in result for metric in connection_metrics)
+        has_quality = any(metric in result for metric in quality_metrics)
+
+        return has_latency or has_throughput or has_connection or has_quality
+
+
 class ParserRegistry:
     """Registry for managing test result parsers."""
 
@@ -345,6 +396,7 @@ class ParserRegistry:
 ParserRegistry.register("memory_bandwidth", MemoryBandwidthParser)
 ParserRegistry.register("cpu_latency", CpuLatencyParser)
 ParserRegistry.register("cpu_mem", CpuMemParser)
+ParserRegistry.register("network_perf", NetworkPerfParser)
 
 
 class ParserFactory:

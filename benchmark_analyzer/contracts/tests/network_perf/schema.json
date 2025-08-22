@@ -1,0 +1,284 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Network Performance Benchmark Test Results Schema",
+  "description": "Schema for validating network performance benchmark test results",
+  "properties": {
+    "test_name": {
+      "type": "string",
+      "description": "Name of the test run",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when the test was executed"
+    },
+    "test_duration_sec": {
+      "type": "integer",
+      "description": "Total test duration in seconds",
+      "minimum": 0
+    },
+    "tcp_latency_avg_ms": {
+      "type": "number",
+      "description": "Average TCP latency in milliseconds",
+      "minimum": 0
+    },
+    "tcp_latency_min_ms": {
+      "type": "number",
+      "description": "Minimum TCP latency in milliseconds",
+      "minimum": 0
+    },
+    "tcp_latency_max_ms": {
+      "type": "number",
+      "description": "Maximum TCP latency in milliseconds",
+      "minimum": 0
+    },
+    "udp_latency_avg_ms": {
+      "type": "number",
+      "description": "Average UDP latency in milliseconds",
+      "minimum": 0
+    },
+    "udp_latency_min_ms": {
+      "type": "number",
+      "description": "Minimum UDP latency in milliseconds",
+      "minimum": 0
+    },
+    "udp_latency_max_ms": {
+      "type": "number",
+      "description": "Maximum UDP latency in milliseconds",
+      "minimum": 0
+    },
+    "tcp_throughput_mbps": {
+      "type": "number",
+      "description": "TCP throughput in Mbps",
+      "minimum": 0
+    },
+    "udp_throughput_mbps": {
+      "type": "number",
+      "description": "UDP throughput in Mbps",
+      "minimum": 0
+    },
+    "download_bandwidth_mbps": {
+      "type": "number",
+      "description": "Download bandwidth in Mbps",
+      "minimum": 0
+    },
+    "upload_bandwidth_mbps": {
+      "type": "number",
+      "description": "Upload bandwidth in Mbps",
+      "minimum": 0
+    },
+    "connection_establishment_time_ms": {
+      "type": "number",
+      "description": "Connection establishment time in milliseconds",
+      "minimum": 0
+    },
+    "connections_per_second": {
+      "type": "integer",
+      "description": "Number of connections established per second",
+      "minimum": 0
+    },
+    "packet_loss_percent": {
+      "type": "number",
+      "description": "Packet loss percentage",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "jitter_ms": {
+      "type": "number",
+      "description": "Network jitter in milliseconds",
+      "minimum": 0
+    },
+    "concurrent_connections": {
+      "type": "integer",
+      "description": "Number of concurrent connections used in test",
+      "minimum": 1
+    },
+    "packet_size_bytes": {
+      "type": "integer",
+      "description": "Packet size in bytes",
+      "minimum": 1
+    },
+    "test_tool": {
+      "type": "string",
+      "description": "Network testing tool used",
+      "enum": ["iperf3", "netperf", "ping", "hping3", "nuttcp", "custom"]
+    },
+    "test_parameters": {
+      "type": "object",
+      "description": "Additional test parameters",
+      "properties": {
+        "protocol": {
+          "type": "string",
+          "description": "Network protocol(s) tested",
+          "enum": ["tcp", "udp", "tcp/udp", "icmp"]
+        },
+        "parallel_streams": {
+          "type": "integer",
+          "description": "Number of parallel streams",
+          "minimum": 1
+        },
+        "window_size": {
+          "type": "string",
+          "description": "TCP window size"
+        },
+        "buffer_length": {
+          "type": "string",
+          "description": "Buffer length for tests"
+        },
+        "test_server": {
+          "type": "string",
+          "description": "IP address or hostname of test server"
+        },
+        "test_port": {
+          "type": "integer",
+          "description": "Port number used for testing",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "reverse_mode": {
+          "type": "boolean",
+          "description": "Whether reverse mode was used"
+        }
+      }
+    },
+    "error_count": {
+      "type": "integer",
+      "description": "Number of errors encountered during test",
+      "minimum": 0
+    },
+    "warnings": {
+      "type": "array",
+      "description": "List of warnings generated during test",
+      "items": {
+        "type": "string"
+      }
+    },
+    "detailed_metrics": {
+      "type": "object",
+      "description": "Detailed per-protocol metrics",
+      "properties": {
+        "tcp_tests": {
+          "type": "object",
+          "description": "TCP-specific test results"
+        },
+        "udp_tests": {
+          "type": "object",
+          "description": "UDP-specific test results"
+        },
+        "latency_tests": {
+          "type": "object",
+          "description": "Latency test results"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata about the test",
+      "properties": {
+        "tool_version": {
+          "type": "string",
+          "description": "Version of the network testing tool used"
+        },
+        "os_info": {
+          "type": "string",
+          "description": "Operating system information"
+        },
+        "kernel_version": {
+          "type": "string",
+          "description": "Kernel version"
+        },
+        "network_interface": {
+          "type": "string",
+          "description": "Network interface used for testing"
+        },
+        "interface_speed": {
+          "type": "string",
+          "description": "Network interface speed (e.g., '1 Gbps', '10 Gbps')"
+        },
+        "mtu_size": {
+          "type": "integer",
+          "description": "Maximum Transmission Unit size",
+          "minimum": 1
+        },
+        "tcp_congestion_control": {
+          "type": "string",
+          "description": "TCP congestion control algorithm"
+        },
+        "network_card": {
+          "type": "string",
+          "description": "Network card model and manufacturer"
+        },
+        "driver_version": {
+          "type": "string",
+          "description": "Network driver version"
+        }
+      }
+    }
+  },
+  "required": [
+    "test_name",
+    "timestamp"
+  ],
+  "additionalProperties": true,
+  "anyOf": [
+    {"required": ["tcp_latency_avg_ms"]},
+    {"required": ["udp_latency_avg_ms"]},
+    {"required": ["tcp_throughput_mbps"]},
+    {"required": ["udp_throughput_mbps"]},
+    {"required": ["download_bandwidth_mbps"]},
+    {"required": ["upload_bandwidth_mbps"]},
+    {"required": ["connection_establishment_time_ms"]},
+    {"required": ["connections_per_second"]},
+    {"required": ["packet_loss_percent"]},
+    {"required": ["jitter_ms"]}
+  ],
+  "examples": [
+    {
+      "test_name": "lab_server_network_performance_001",
+      "timestamp": "2024-01-15T14:30:00Z",
+      "test_duration_sec": 300,
+      "tcp_latency_avg_ms": 0.85,
+      "tcp_latency_min_ms": 0.42,
+      "tcp_latency_max_ms": 2.31,
+      "udp_latency_avg_ms": 0.73,
+      "udp_latency_min_ms": 0.38,
+      "udp_latency_max_ms": 1.95,
+      "tcp_throughput_mbps": 9850.0,
+      "udp_throughput_mbps": 9720.0,
+      "download_bandwidth_mbps": 9870.5,
+      "upload_bandwidth_mbps": 9845.2,
+      "connection_establishment_time_ms": 0.125,
+      "connections_per_second": 15000,
+      "packet_loss_percent": 0.001,
+      "jitter_ms": 0.05,
+      "concurrent_connections": 100,
+      "packet_size_bytes": 1500,
+      "test_tool": "iperf3",
+      "test_parameters": {
+        "protocol": "tcp/udp",
+        "parallel_streams": 10,
+        "window_size": "128KB",
+        "buffer_length": "1M",
+        "test_server": "192.168.10.200",
+        "test_port": 5001,
+        "reverse_mode": false
+      },
+      "error_count": 0,
+      "warnings": [],
+      "metadata": {
+        "tool_version": "iperf-3.12",
+        "os_info": "Ubuntu 22.04.3 LTS",
+        "kernel_version": "5.15.0-88-generic",
+        "network_interface": "ens3",
+        "interface_speed": "10 Gbps",
+        "mtu_size": 1500,
+        "tcp_congestion_control": "cubic",
+        "network_card": "Intel X710 10GbE",
+        "driver_version": "2.19.3"
+      }
+    }
+  ]
+}
