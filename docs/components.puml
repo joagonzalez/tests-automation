@@ -1,0 +1,230 @@
+@startuml components
+!define COMPONENT(name,desc) component name as "desc"
+!define DATABASE(name,desc) database name as "desc"
+!define INTERFACE(name,desc) interface name as "desc"
+!define CLOUD(name,desc) cloud name as "desc"
+!define NODE(name,desc) node name as "desc"
+
+title Benchmark Analyzer - System Components Architecture
+caption Components, Services, Ports, and Interactions Overview
+
+' === EXTERNAL SYSTEMS ===
+package "External Systems" as external {
+    CLOUD(test_env, "Test Environment\n---\nHardware/Software\nunder test")
+    COMPONENT(benchmark_runner, "Benchmark Runner CLI\n---\nExecutes tests\nGenerates result packages\n(.zip files)")
+    COMPONENT(vdi_workstation, "VDI/Workstation\n---\nDeveloper environment\nCLI execution point")
+}
+
+' === INFRASTRUCTURE LAYER ===
+package "Infrastructure Layer" as infra {
+    NODE(docker_host, "Docker Host") {
+
+        ' === MYSQL DATABASE ===
+        DATABASE(mysql, "MySQL 8.0.39\n---\nPort: 3306\nDatabase: perf_framework\nUser: benchmark\nPassword: benchmark123\n---\nStores:\n- Test runs\n- BOMs\n- Results\n- Acceptance criteria")
+
+        ' === GRAFANA ===
+        COMPONENT(grafana, "Grafana 10.2.0\n---\nPort: 3000\nAdmin: admin/admin123\n---\nDashboards:\n- Performance trends\n- Test results analysis\n- BOM comparisons")
+
+
+    }
+}
+
+' === APPLICATION LAYER ===
+package "Application Layer" as app_layer {
+
+    ' === API APPLICATION ===
+    NODE(api_container, "FastAPI Application") {
+        COMPONENT(fastapi_app, "FastAPI App\n---\nPort: 8000\nHost: 0.0.0.0\nWorkers: 1\n---\nFeatures:\n- Auto-generated docs\n- CORS enabled\n- Request/Response logging")
+
+        package "API Endpoints" as endpoints {
+            COMPONENT(health_ep, "Health\n/health")
+            COMPONENT(test_runs_ep, "Test Runs\n/api/v1/test-runs")
+            COMPONENT(test_types_ep, "Test Types\n/api/v1/test-types")
+            COMPONENT(environments_ep, "Environments\n/api/v1/environments")
+            COMPONENT(results_ep, "Results\n/api/v1/results")
+            COMPONENT(upload_ep, "Upload\n/api/v1/upload")
+        }
+
+        package "API Services" as services {
+            COMPONENT(database_svc, "Database Service\n---\n- Connection pooling\n- Transaction management\n- CRUD operations")
+            COMPONENT(validation_svc, "Validation Service\n---\n- JSON Schema validation\n- BOM validation\n- Environment validation")
+            COMPONENT(upload_svc, "Upload Service\n---\n- File handling\n- Zip extraction\n- Temporary storage")
+        }
+    }
+
+    ' === CLI APPLICATION ===
+    NODE(cli_app, "CLI Application") {
+        COMPONENT(typer_cli, "Typer CLI\n---\nCommands:\n- import\n- query\n- db\n- schema")
+
+        package "CLI Core" as cli_core {
+            COMPONENT(loader, "Data Loader\n---\n- BOM deduplication\n- Test run creation\n- Result processing")
+            COMPONENT(parser_registry, "Parser Registry\n---\n- Dynamic parser discovery\n- Test type routing\n- Format handling")
+            COMPONENT(validator, "Schema Validator\n---\n- Contract validation\n- JSON Schema checks\n- Business rules")
+        }
+
+        package "Parsers" as parsers {
+            COMPONENT(base_parser, "Base Parser\n---\nAbstract interface")
+            COMPONENT(cpu_mem_parser, "CPU/Memory Parser\n---\n- CSV/JSON input\n- Sysbench results\n- Memory bandwidth")
+            COMPONENT(io_parser, "I/O Parser\n---\n- FIO results\n- Disk performance")
+            COMPONENT(network_parser, "Network Parser\n---\n- iperf results\n- Network latency")
+        }
+    }
+}
+
+' === DATA LAYER ===
+package "Data Layer" as data_layer {
+    package "Database Tables" as tables {
+        COMPONENT(operators_tbl, "operators\n---\nLookup table")
+        COMPONENT(test_types_tbl, "test_types\n---\nTest definitions")
+        COMPONENT(environments_tbl, "environments\n---\nTest environments")
+        COMPONENT(hw_bom_tbl, "hw_bom\n---\nHardware BOMs\nwith specs_hash")
+        COMPONENT(sw_bom_tbl, "sw_bom\n---\nSoftware BOMs\nwith specs_hash")
+        COMPONENT(test_runs_tbl, "test_runs\n---\nFact table")
+        COMPONENT(results_tbl, "results_cpu_mem\n---\nTest results")
+        COMPONENT(acceptance_tbl, "acceptance_criteria\n---\nThresholds")
+    }
+
+    package "Contracts & Schemas" as contracts {
+        COMPONENT(env_contracts, "Environment Contracts\n---\nYAML definitions\nJSON schemas")
+        COMPONENT(test_contracts, "Test Type Contracts\n---\nBOM schemas\nTest definitions")
+        COMPONENT(result_schemas, "Result Schemas\n---\nValidation rules\nData structure")
+    }
+}
+
+' === STORAGE LAYER ===
+package "Storage Layer" as storage {
+    COMPONENT(uploads_vol, "Uploads Volume\n---\n/app/uploads\nPersistent storage")
+    COMPONENT(temp_vol, "Temp Volume\n---\n/app/temp\nTemporary processing")
+    COMPONENT(mysql_vol, "MySQL Data\n---\n/var/lib/mysql\nDatabase storage")
+    COMPONENT(grafana_vol, "Grafana Data\n---\n/var/lib/grafana\nDashboard storage")
+}
+
+' === NETWORK ===
+package "Network" as network {
+    COMPONENT(docker_network, "Docker Network\n---\nbenchmark-analyzer-network\nBridge driver")
+}
+
+' === CONNECTIONS ===
+
+' External to Infrastructure
+test_env --> benchmark_runner : "Test execution"
+benchmark_runner --> vdi_workstation : "Result packages\n(.zip files)"
+
+' VDI to CLI
+vdi_workstation --> typer_cli : "CLI commands\nFile uploads"
+
+' CLI to API (via network)
+typer_cli ..> fastapi_app : "HTTP API calls\nResult upload"
+
+' CLI Internal
+typer_cli --> loader
+typer_cli --> parser_registry
+typer_cli --> validator
+loader --> parser_registry
+loader --> validator
+parser_registry --> base_parser
+base_parser <|-- cpu_mem_parser
+base_parser <|-- io_parser
+base_parser <|-- network_parser
+
+' API Internal
+fastapi_app --> health_ep
+fastapi_app --> test_runs_ep
+fastapi_app --> test_types_ep
+fastapi_app --> environments_ep
+fastapi_app --> results_ep
+fastapi_app --> upload_ep
+
+endpoints --> services
+database_svc --> mysql : "Port 3306\nMySQL protocol"
+upload_svc --> uploads_vol
+upload_svc --> temp_vol
+
+' Database connections
+loader --> mysql : "SQLAlchemy ORM\nPort 3306"
+mysql --> tables
+
+' Grafana connections
+grafana --> mysql : "Data source\nPort 3306\nSQL queries"
+
+
+
+' Storage connections
+mysql --> mysql_vol
+grafana --> grafana_vol
+
+' Network layer
+docker_network --> mysql
+docker_network --> grafana
+docker_network --> fastapi_app
+
+' Contract usage
+validator --> env_contracts
+validator --> test_contracts
+validator --> result_schemas
+
+' === PORTS AND PROTOCOLS ===
+note top of mysql
+**MySQL Database**
+- Port: 3306
+- Protocol: MySQL
+- Connections: 200 max
+- Users: root, benchmark
+- Charset: utf8mb4
+end note
+
+note top of grafana
+**Grafana Dashboard**
+- Port: 3000
+- Protocol: HTTP
+- Admin: admin/admin123
+- Plugins: Clock, JSON, Pie Chart
+- Features: Alerting, Dashboards
+end note
+
+note top of fastapi_app
+**FastAPI Application**
+- Port: 8000
+- Protocol: HTTP/REST
+- Workers: 1 (dev), N (prod)
+- Features: OpenAPI, CORS
+- Docs: /docs, /redoc
+end note
+
+
+
+' === DATA FLOW ===
+note bottom of typer_cli
+**CLI Data Flow**
+1. Import command received
+2. Extract ZIP package
+3. Parse results by test type
+4. Validate against schemas
+5. Create/find BOMs by hash
+6. Store in database
+7. Generate summary report
+end note
+
+note bottom of fastapi_app
+**API Data Flow**
+1. HTTP request received
+2. Middleware processing
+3. Endpoint routing
+4. Service layer processing
+5. Database operations
+6. Response formatting
+7. CORS headers added
+end note
+
+' === SECURITY ===
+note left of docker_network
+**Security Features**
+- Container isolation
+- Network segmentation
+- Environment variables
+- Volume permissions
+- Optional authentication
+- CORS configuration
+end note
+
+@enduml
