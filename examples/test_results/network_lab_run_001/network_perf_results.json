@@ -1,0 +1,76 @@
+{
+  "test_name": "lab_server_network_performance_001",
+  "timestamp": "2024-01-15T14:30:00Z",
+  "test_duration_sec": 300,
+  "tcp_latency_avg_ms": 0.85,
+  "tcp_latency_min_ms": 0.42,
+  "tcp_latency_max_ms": 2.31,
+  "udp_latency_avg_ms": 0.73,
+  "udp_latency_min_ms": 0.38,
+  "udp_latency_max_ms": 1.95,
+  "tcp_throughput_mbps": 9850.0,
+  "udp_throughput_mbps": 9720.0,
+  "download_bandwidth_mbps": 9870.5,
+  "upload_bandwidth_mbps": 9845.2,
+  "connection_establishment_time_ms": 0.125,
+  "connections_per_second": 15000,
+  "packet_loss_percent": 0.001,
+  "jitter_ms": 0.05,
+  "concurrent_connections": 100,
+  "packet_size_bytes": 1500,
+  "test_tool": "iperf3",
+  "test_parameters": {
+    "protocol": "tcp/udp",
+    "parallel_streams": 10,
+    "window_size": "128KB",
+    "buffer_length": "1M",
+    "test_server": "192.168.10.200",
+    "test_port": 5001,
+    "reverse_mode": false
+  },
+  "error_count": 0,
+  "warnings": [],
+  "detailed_metrics": {
+    "tcp_tests": {
+      "single_stream": {
+        "throughput_mbps": 9850.0,
+        "retransmissions": 5,
+        "cwnd_mean": 1048576
+      },
+      "parallel_streams": {
+        "stream_count": 10,
+        "aggregate_throughput_mbps": 9850.0,
+        "per_stream_throughput_mbps": 985.0
+      }
+    },
+    "udp_tests": {
+      "throughput_mbps": 9720.0,
+      "packet_loss_count": 12,
+      "out_of_order_packets": 2,
+      "duplicate_packets": 0
+    },
+    "latency_tests": {
+      "ping_stats": {
+        "packets_transmitted": 1000,
+        "packets_received": 999,
+        "packet_loss_percent": 0.1,
+        "time_ms": 1000,
+        "rtt_avg_ms": 0.85,
+        "rtt_min_ms": 0.42,
+        "rtt_max_ms": 2.31,
+        "rtt_mdev_ms": 0.15
+      }
+    }
+  },
+  "metadata": {
+    "tool_version": "iperf-3.12",
+    "os_info": "Ubuntu 22.04.3 LTS",
+    "kernel_version": "5.15.0-88-generic",
+    "network_interface": "ens3",
+    "interface_speed": "10 Gbps",
+    "mtu_size": 1500,
+    "tcp_congestion_control": "cubic",
+    "network_card": "Intel X710 10GbE",
+    "driver_version": "2.19.3"
+  }
+}

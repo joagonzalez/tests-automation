@@ -1,0 +1,101 @@
+# examples/environments/lab-server-network.yaml
+name: "lab-server-network"
+type: "lab"
+comments: "High-performance lab server optimized for network performance testing"
+
+tools:
+  iperf3:
+    version: "3.12"
+    command: "iperf3"
+    options:
+      port: 5001
+      parallel: 10
+      time: 60
+      window: "128K"
+      length: "1M"
+  netperf:
+    version: "2.7.0"
+    command: "netperf"
+    options:
+      test_length: 60
+      confidence_level: 95
+      iterations: 5
+  ping:
+    version: "iputils-20211215"
+    command: "ping"
+    options:
+      count: 1000
+      interval: 0.001
+      packet_size: 1500
+  traceroute:
+    version: "2.1.0"
+    command: "traceroute"
+    options:
+      max_hops: 30
+      queries: 3
+
+metadata:
+  location: "Lab A - Server Rack 2"
+  rack: "LAB-A-R02"
+  datacenter: "main-lab"
+  environment_owner: "network-team"
+  contact_email: "network-team@company.com"
+
+  hardware:
+    cpu_model: "Intel Xeon Gold 6230R"
+    cpu_cores: 26
+    cpu_threads: 52
+    cpu_base_frequency: "2.1GHz"
+    cpu_boost_frequency: "4.0GHz"
+    memory_total: "128GB"
+    memory_type: "DDR4-2933"
+    memory_channels: 6
+    storage_type: "NVMe SSD"
+    storage_capacity: "2TB"
+    network_interface: "10 Gigabit Ethernet"
+    network_card: "Intel X710 Dual Port"
+    network_ports: 2
+
+  software:
+    operating_system: "Ubuntu 22.04.3 LTS"
+    kernel_version: "5.15.0-88-generic"
+    container_runtime: "Docker 24.0.7"
+    virtualization: "none"
+
+  network:
+    hostname: "lab-server-network"
+    ip_address: "192.168.10.200"
+    subnet: "192.168.10.0/24"
+    gateway: "192.168.10.1"
+    dns_servers:
+      - "192.168.10.10"
+      - "8.8.8.8"
+    mtu: 1500
+    tcp_congestion_control: "cubic"
+    network_buffer_sizes:
+      tcp_rmem: "4096 87380 16777216"
+      tcp_wmem: "4096 65536 16777216"
+      udp_mem: "102400 873800 16777216"
+
+  performance:
+    cpu_governor: "performance"
+    numa_balancing: "disabled"
+    transparent_hugepages: "always"
+    swappiness: 1
+    network_irq_balance: "enabled"
+    network_interrupt_coalescing: "adaptive"
+
+  network_testing:
+    test_server_ip: "192.168.10.201"
+    test_server_hostname: "lab-test-target"
+    available_bandwidth: "10Gbps"
+    expected_latency_ms: 0.5
+    packet_loss_threshold: 0.01
+
+  tags:
+    - "production"
+    - "high-performance"
+    - "network-benchmark"
+    - "lab"
+    - "x86_64"
+    - "10gbps"

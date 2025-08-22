@@ -1,0 +1,151 @@
+hardware:
+  specs:
+    manufacturer: "Dell"
+    model: "PowerEdge R750"
+    serial_number: "NET789012"
+    cpu:
+      model: "Intel Xeon Gold 6230R"
+      cores: 26
+      threads: 52
+      base_frequency: "2.1GHz"
+      max_frequency: "4.0GHz"
+      cache_l3: "35.75MB"
+      architecture: "x86_64"
+      virtualization: "VT-x"
+      features:
+        - "Intel Turbo Boost Technology 2.0"
+        - "Intel Hyper-Threading Technology"
+        - "Enhanced Intel SpeedStep Technology"
+    memory:
+      total: "128GB"
+      type: "DDR4-2933"
+      modules: 8
+      module_size: "16GB"
+      channels: 6
+      ecc: true
+      speed: "2933 MHz"
+      latency: "CL21"
+    storage:
+      primary:
+        type: "NVMe SSD"
+        model: "Samsung PM983"
+        capacity: "2TB"
+        interface: "PCIe 3.0 x4"
+        form_factor: "M.2 2280"
+        sequential_read: "3500 MB/s"
+        sequential_write: "2900 MB/s"
+      secondary:
+        type: "SATA SSD"
+        model: "Samsung 860 EVO"
+        capacity: "1TB"
+        interface: "SATA 3.0"
+        sequential_read: "550 MB/s"
+        sequential_write: "520 MB/s"
+    network:
+      primary:
+        type: "Ethernet"
+        speed: "10 Gbps"
+        ports: 2
+        model: "Intel X710 Dual Port"
+        pcie_slot: "PCIe 3.0 x8"
+        features:
+          - "SR-IOV"
+          - "VMDq"
+          - "RSS (Receive Side Scaling)"
+          - "TSO (TCP Segmentation Offload)"
+          - "LRO (Large Receive Offload)"
+          - "VLAN filtering"
+          - "Flow Control"
+        driver: "i40e"
+        driver_version: "2.19.3"
+        firmware_version: "8.00 0x80008b82"
+      secondary:
+        type: "Ethernet"
+        speed: "1 Gbps"
+        ports: 4
+        model: "Broadcom NetXtreme BCM5720"
+        interface: "Integrated"
+        features:
+          - "Wake-on-LAN"
+          - "PXE Boot"
+          - "IPMI"
+    power:
+      supply: "750W 80+ Gold"
+      redundancy: "1+1"
+      efficiency: "94%"
+
+software:
+  specs:
+    operating_system:
+      name: "Ubuntu Server"
+      version: "22.04.3 LTS"
+      kernel: "5.15.0-88-generic"
+      architecture: "x86_64"
+      kernel_parameters:
+        - "intel_iommu=on"
+        - "iommu=pt"
+        - "isolcpus=2-25,28-51"
+        - "nohz_full=2-25,28-51"
+        - "rcu_nocbs=2-25,28-51"
+    runtime:
+      docker:
+        version: "24.0.7"
+        compose_version: "2.21.0"
+      python:
+        version: "3.11.7"
+        packages:
+          - "numpy==1.24.3"
+          - "pandas==2.0.3"
+          - "matplotlib==3.7.2"
+    networking:
+      tools:
+        iperf3:
+          version: "3.12"
+          source: "apt"
+          build_flags: "--enable-static-bin"
+        netperf:
+          version: "2.7.0"
+          source: "compiled"
+          features:
+            - "histogram"
+            - "intervals"
+        hping3:
+          version: "3.0.0"
+          source: "apt"
+        tcpdump:
+          version: "4.99.1"
+          source: "apt"
+        wireshark:
+          version: "3.6.2"
+          source: "apt"
+        ethtool:
+          version: "5.16"
+          source: "apt"
+      kernel_modules:
+        - "i40e"
+        - "vfio-pci"
+        - "uio_pci_generic"
+      network_stack:
+        tcp_congestion_control: "cubic"
+        tcp_window_scaling: true
+        tcp_timestamps: true
+        tcp_sack: true
+        tcp_fack: true
+        tcp_dsack: true
+        tcp_ecn: false
+        tcp_slow_start_after_idle: false
+        receive_packet_steering: true
+        receive_flow_steering: true
+        generic_receive_offload: true
+        large_receive_offload: true
+        tcp_segmentation_offload: true
+        generic_segmentation_offload: true
+      buffer_tuning:
+        net_core_rmem_default: 262144
+        net_core_rmem_max: 16777216
+        net_core_wmem_default: 262144
+        net_core_wmem_max: 16777216
+        net_ipv4_tcp_rmem: "4096 87380 16777216"
+        net_ipv4_tcp_wmem: "4096 65536 16777216"
+        net_core_netdev_max_backlog: 5000
+        net_ipv4_tcp_congestion_control: "cubic"
