@@ -1,5 +1,7 @@
 """Database models for benchmark analyzer."""
 
+import hashlib
+import json
 import uuid
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -32,6 +34,13 @@ Base = declarative_base()
 def generate_uuid() -> str:
     """Generate UUID string."""
     return str(uuid.uuid4())
+
+
+def calculate_specs_hash(specs: Dict[str, Any]) -> str:
+    """Calculate SHA256 hash of specs for deduplication."""
+    # Normalize JSON for consistent hashing
+    specs_json = json.dumps(specs, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(specs_json.encode()).hexdigest()
 
 
 class Operator(Base):
@@ -105,6 +114,7 @@ class HardwareBOM(Base):
         MYSQL_CHAR(36), primary_key=True, default=generate_uuid
     )
     specs: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    specs_hash: Mapped[str] = mapped_column(VARCHAR(64), nullable=False, unique=True)
 
     # Constraints
     __table_args__ = (CheckConstraint("JSON_VALID(specs)", name="chk_hw_specs_valid"),)
@@ -125,6 +135,7 @@ class SoftwareBOM(Base):
         MYSQL_CHAR(36), primary_key=True, default=generate_uuid
     )
     specs: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    specs_hash: Mapped[str] = mapped_column(VARCHAR(64), nullable=False, unique=True)
     kernel_version: Mapped[Optional[str]] = mapped_column(
         VARCHAR(50),
         nullable=True,
