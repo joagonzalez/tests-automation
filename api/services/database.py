@@ -12,7 +12,7 @@ from sqlalchemy import func, and_, or_, desc, asc
 from benchmark_analyzer.db.connector import get_db_manager
 from benchmark_analyzer.db.models import (
     Base, TestRun, TestType, Environment, HardwareBOM, SoftwareBOM,
-    ResultsCpuMem, AcceptanceCriteria, Operator, MODEL_REGISTRY
+    ResultsCpuMem, ResultsNetworkPerf, AcceptanceCriteria, Operator, MODEL_REGISTRY
 )
 
 logger = logging.getLogger(__name__)

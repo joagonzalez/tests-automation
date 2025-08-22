@@ -7,6 +7,7 @@ from . import (
     environments,
     results,
     upload,
+    boms,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "environments",
     "results",
     "upload",
+    "boms",
 ]

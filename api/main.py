@@ -28,6 +28,7 @@ from api.endpoints import (
     environments,
     results,
     upload,
+    boms,
 )
 
 
@@ -248,6 +249,12 @@ class Application:
             upload.router,
             prefix="/api/v1/upload",
             tags=["upload"]
+        )
+
+        self.app.include_router(
+            boms.router,
+            prefix="/api/v1/boms",
+            tags=["boms"]
         )
 
         # Root endpoint

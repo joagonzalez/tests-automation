@@ -4,16 +4,35 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc, asc
 
 from benchmark_analyzer.db.connector import get_db_manager
 from benchmark_analyzer.db.models import (
-    TestRun, TestType, Environment, ResultsCpuMem,
+    TestRun, TestType, Environment, ResultsCpuMem, ResultsNetworkPerf,
     HardwareBOM, SoftwareBOM
 )
+
+# Test type to results table mapping
+RESULTS_TABLE_MAP = {
+    'cpu_mem': ResultsCpuMem,
+    'network_perf': ResultsNetworkPerf,
+    # Add new test types here:
+    # 'io_performance': ResultsIO,
+    # 'gpu_compute': ResultsGPU,
+}
+
+def get_results_model(test_type_name: str):
+    """Get the results model class for a given test type."""
+    model = RESULTS_TABLE_MAP.get(test_type_name)
+    if not model:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported test type: {test_type_name}. Supported types: {list(RESULTS_TABLE_MAP.keys())}"
+        )
+    return model
 from api.config.settings import config
 
 logger = logging.getLogger(__name__)
@@ -97,6 +116,76 @@ class MetricDefinition(BaseModel):
     category: str  # 'memory', 'cpu', 'general'
 
 
+class ResultsCreate(BaseModel):
+    """Results creation model."""
+    results: Dict[str, Any] = Field(..., description="Results data")
+
+
+@router.post("/{test_run_id}", status_code=status.HTTP_201_CREATED)
+async def create_results(
+    test_run_id: str,
+    results_data: ResultsCreate,
+    db: Session = Depends(get_db_session),
+) -> Dict[str, str]:
+    """Create results for a test run."""
+    try:
+        # Check if test run exists and get test type
+        test_run = db.query(TestRun).filter(TestRun.test_run_id == test_run_id).first()
+        if not test_run:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Test run not found"
+            )
+
+        # Get the appropriate results model for this test type
+        results_model = get_results_model(test_run.test_type.name)
+
+        # Check if results already exist
+        existing_results = db.query(results_model).filter(
+            results_model.test_run_id == test_run_id
+        ).first()
+        if existing_results:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Results already exist for this test run"
+            )
+
+        # Get valid fields for this results model
+        valid_fields = set()
+        for column in results_model.__table__.columns:
+            if column.name != 'test_run_id':  # Exclude primary key
+                valid_fields.add(column.name)
+
+        filtered_results = {
+            key: value for key, value in results_data.results.items()
+            if key in valid_fields
+        }
+
+        logger.info(f"Creating results for test run {test_run_id} with filtered data: {filtered_results}")
+        new_results = results_model(
+            test_run_id=test_run_id,
+            **filtered_results
+        )
+
+        db.add(new_results)
+        db.commit()
+
+        return {"message": "Results created successfully", "test_run_id": test_run_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create results for test run {test_run_id}: {e}")
+        logger.error(f"Results data was: {results_data.results}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create results: {str(e)}"
+        )
+
+
 @router.get("/", response_model=ResultsListResponse)
 async def list_results(
     db: Session = Depends(get_db_session),
@@ -115,10 +204,10 @@ async def list_results(
 ) -> ResultsListResponse:
     """List test results with filtering and pagination."""
     try:
-        # Build query with joins
+        # For list endpoint, we need to query across all result types
+        # Start with test runs and join appropriate results tables
         query = (
-            db.query(ResultsCpuMem, TestRun, TestType, Environment)
-            .join(TestRun, ResultsCpuMem.test_run_id == TestRun.test_run_id)
+            db.query(TestRun, TestType, Environment)
             .join(TestType, TestRun.test_type_id == TestType.test_type_id)
             .outerjoin(Environment, TestRun.environment_id == Environment.id)
         )
@@ -148,19 +237,10 @@ async def list_results(
                 raise HTTPException(status_code=400, detail="Invalid date_to format. Use YYYY-MM-DD")
 
         # Apply metric filters
+        # For metric filtering, we'll need to handle it per test type
+        # For now, skip metric filtering in list endpoint to keep it simple
         if metric_name and (metric_min is not None or metric_max is not None):
-            metric_column = getattr(ResultsCpuMem, metric_name, None)
-            if metric_column is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid metric name: {metric_name}"
-                )
-
-            if metric_min is not None:
-                query = query.filter(metric_column >= metric_min)
-
-            if metric_max is not None:
-                query = query.filter(metric_column <= metric_max)
+            logger.warning("Metric filtering not yet supported in list endpoint with dynamic results tables")
 
         # Apply sorting
         if sort_by == "created_at":
@@ -233,35 +313,38 @@ async def get_result(
 ) -> ResultsResponse:
     """Get specific test result."""
     try:
-        # Query with joins
-        result_query = (
-            db.query(ResultsCpuMem, TestRun, TestType, Environment)
-            .join(TestRun, ResultsCpuMem.test_run_id == TestRun.test_run_id)
-            .join(TestType, TestRun.test_type_id == TestType.test_type_id)
-            .outerjoin(Environment, TestRun.environment_id == Environment.id)
-            .filter(ResultsCpuMem.test_run_id == test_run_id)
-            .first()
-        )
+        # First get the test run to determine the test type
+        test_run = db.query(TestRun).filter(TestRun.test_run_id == test_run_id).first()
+        if not test_run:
+            raise HTTPException(status_code=404, detail="Test run not found")
 
-        if not result_query:
+        # Get the appropriate results model and query for results
+        results_model = get_results_model(test_run.test_type.name)
+        result_data = db.query(results_model).filter(
+            results_model.test_run_id == test_run_id
+        ).first()
+
+        if not result_data:
             raise HTTPException(status_code=404, detail="Test result not found")
 
-        result, test_run, test_type, environment = result_query
+        # Get related data
+        test_type = test_run.test_type
+        environment = test_run.environment
 
         return ResultsResponse(
-            test_run_id=result.test_run_id,
+            test_run_id=result_data.test_run_id,
             # Memory metrics
-            memory_idle_latency_ns=result.memory_idle_latency_ns,
-            memory_peak_injection_bandwidth_mbs=result.memory_peak_injection_bandwidth_mbs,
-            ramspeed_smp_bandwidth_mbs_add=result.ramspeed_smp_bandwidth_mbs_add,
-            ramspeed_smp_bandwidth_mbs_copy=result.ramspeed_smp_bandwidth_mbs_copy,
-            sysbench_ram_memory_bandwidth_mibs=result.sysbench_ram_memory_bandwidth_mibs,
-            sysbench_ram_memory_test_duration_sec=result.sysbench_ram_memory_test_duration_sec,
-            sysbench_ram_memory_test_mode=result.sysbench_ram_memory_test_mode,
+            memory_idle_latency_ns=result_data.memory_idle_latency_ns,
+            memory_peak_injection_bandwidth_mbs=result_data.memory_peak_injection_bandwidth_mbs,
+            ramspeed_smp_bandwidth_mbs_add=result_data.ramspeed_smp_bandwidth_mbs_add,
+            ramspeed_smp_bandwidth_mbs_copy=result_data.ramspeed_smp_bandwidth_mbs_copy,
+            sysbench_ram_memory_bandwidth_mibs=result_data.sysbench_ram_memory_bandwidth_mibs,
+            sysbench_ram_memory_test_duration_sec=result_data.sysbench_ram_memory_test_duration_sec,
+            sysbench_ram_memory_test_mode=result_data.sysbench_ram_memory_test_mode,
             # CPU metrics
-            sysbench_cpu_events_per_second=result.sysbench_cpu_events_per_second,
-            sysbench_cpu_duration_sec=result.sysbench_cpu_duration_sec,
-            sysbench_cpu_test_mode=result.sysbench_cpu_test_mode,
+            sysbench_cpu_events_per_second=result_data.sysbench_cpu_events_per_second,
+            sysbench_cpu_duration_sec=result_data.sysbench_cpu_duration_sec,
+            sysbench_cpu_test_mode=result_data.sysbench_cpu_test_mode,
             # Test run information
             test_type_id=test_run.test_type_id,
             test_type_name=test_type.name,
@@ -286,96 +369,112 @@ async def get_results_stats(
 ) -> ResultsStats:
     """Get results statistics."""
     try:
-        # Total results
-        total_results = db.query(ResultsCpuMem).count()
-
-        # Results by test type
+        # Count total results across all result types
+        total_results = 0
         results_by_test_type = {}
-        type_counts = (
-            db.query(TestType.name, func.count(ResultsCpuMem.test_run_id))
-            .join(TestRun, ResultsCpuMem.test_run_id == TestRun.test_run_id)
-            .join(TestType, TestRun.test_type_id == TestType.test_type_id)
-            .group_by(TestType.name)
-            .all()
-        )
-        for name, count in type_counts:
-            results_by_test_type[name] = count
 
-        # Results by environment
+        for test_type_name, results_model in RESULTS_TABLE_MAP.items():
+            count = db.query(results_model).count()
+            total_results += count
+            if count > 0:
+                results_by_test_type[test_type_name] = count
+
+        # Results by environment - count test runs that have results
         results_by_environment = {}
-        env_counts = (
-            db.query(Environment.name, func.count(ResultsCpuMem.test_run_id))
-            .join(TestRun, ResultsCpuMem.test_run_id == TestRun.test_run_id)
-            .join(Environment, TestRun.environment_id == Environment.id)
-            .group_by(Environment.name)
-            .all()
-        )
-        for name, count in env_counts:
-            results_by_environment[name or "Unknown"] = count
-
-        # Date range
-        date_range = {"earliest": None, "latest": None}
-        date_stats = (
-            db.query(
-                func.min(TestRun.created_at),
-                func.max(TestRun.created_at)
+        for test_type_name, results_model in RESULTS_TABLE_MAP.items():
+            env_counts = (
+                db.query(Environment.name, func.count(results_model.test_run_id))
+                .join(TestRun, results_model.test_run_id == TestRun.test_run_id)
+                .join(Environment, TestRun.environment_id == Environment.id)
+                .group_by(Environment.name)
+                .all()
             )
-            .join(ResultsCpuMem, TestRun.test_run_id == ResultsCpuMem.test_run_id)
-            .first()
-        )
-        if date_stats[0]:
-            date_range["earliest"] = date_stats[0].isoformat()
-        if date_stats[1]:
-            date_range["latest"] = date_stats[1].isoformat()
+            for name, count in env_counts:
+                env_name = name or "Unknown"
+                results_by_environment[env_name] = results_by_environment.get(env_name, 0) + count
+
+        # Date range - get from test runs that have results
+        date_range_query = None
+        for test_type_name, results_model in RESULTS_TABLE_MAP.items():
+            query_result = (
+                db.query(
+                    func.min(TestRun.created_at),
+                    func.max(TestRun.created_at)
+                )
+                .join(results_model, TestRun.test_run_id == results_model.test_run_id)
+                .first()
+            )
+            if query_result and query_result[0]:
+                if not date_range_query:
+                    date_range_query = query_result
+                else:
+                    # Combine date ranges
+                    min_date = min(date_range_query[0], query_result[0])
+                    max_date = max(date_range_query[1], query_result[1])
+                    date_range_query = (min_date, max_date)
+        date_range = {"earliest": None, "latest": None}
+        if date_range_query and date_range_query[0]:
+            date_range["earliest"] = date_range_query[0].isoformat()
+        if date_range_query and date_range_query[1]:
+            date_range["latest"] = date_range_query[1].isoformat()
 
         # Metrics summary
+        # Calculate metrics summary - simplified for now
+        # TODO: Make this dynamic based on test type
         metrics_summary = {}
 
-        # Memory metrics
-        memory_stats = (
-            db.query(
-                func.avg(ResultsCpuMem.memory_idle_latency_ns),
-                func.min(ResultsCpuMem.memory_idle_latency_ns),
-                func.max(ResultsCpuMem.memory_idle_latency_ns),
-                func.avg(ResultsCpuMem.memory_peak_injection_bandwidth_mbs),
-                func.min(ResultsCpuMem.memory_peak_injection_bandwidth_mbs),
-                func.max(ResultsCpuMem.memory_peak_injection_bandwidth_mbs),
-            )
-            .filter(ResultsCpuMem.memory_idle_latency_ns.is_not(None))
-            .first()
-        )
+        # For now, only calculate metrics for cpu_mem type if it exists
+        if 'cpu_mem' in RESULTS_TABLE_MAP and 'cpu_mem' in results_by_test_type:
+            results_model = RESULTS_TABLE_MAP['cpu_mem']
 
-        if memory_stats[0] is not None:
-            metrics_summary["memory_idle_latency_ns"] = {
-                "avg": float(memory_stats[0]),
-                "min": float(memory_stats[1]),
-                "max": float(memory_stats[2]),
-            }
+            # Memory metrics
+            try:
+                memory_stats = (
+                    db.query(
+                        func.avg(results_model.memory_idle_latency_ns),
+                        func.min(results_model.memory_idle_latency_ns),
+                        func.max(results_model.memory_idle_latency_ns),
+                        func.avg(results_model.memory_peak_injection_bandwidth_mbs),
+                        func.min(results_model.memory_peak_injection_bandwidth_mbs),
+                        func.max(results_model.memory_peak_injection_bandwidth_mbs),
+                    )
+                    .filter(results_model.memory_idle_latency_ns.is_not(None))
+                    .first()
+                )
 
-        if memory_stats[3] is not None:
-            metrics_summary["memory_peak_injection_bandwidth_mbs"] = {
-                "avg": float(memory_stats[3]),
-                "min": float(memory_stats[4]),
-                "max": float(memory_stats[5]),
-            }
+                if memory_stats and memory_stats[0] is not None:
+                    metrics_summary["memory_idle_latency_ns"] = {
+                        "avg": float(memory_stats[0]),
+                        "min": float(memory_stats[1]),
+                        "max": float(memory_stats[2])
+                    }
 
-        # CPU metrics
-        cpu_stats = (
-            db.query(
-                func.avg(ResultsCpuMem.sysbench_cpu_events_per_second),
-                func.min(ResultsCpuMem.sysbench_cpu_events_per_second),
-                func.max(ResultsCpuMem.sysbench_cpu_events_per_second),
-            )
-            .filter(ResultsCpuMem.sysbench_cpu_events_per_second.is_not(None))
-            .first()
-        )
+                if memory_stats and memory_stats[3] is not None:
+                    metrics_summary["memory_peak_injection_bandwidth_mbs"] = {
+                        "avg": float(memory_stats[3]),
+                        "min": float(memory_stats[4]),
+                        "max": float(memory_stats[5])
+                    }
 
-        if cpu_stats[0] is not None:
-            metrics_summary["sysbench_cpu_events_per_second"] = {
-                "avg": float(cpu_stats[0]),
-                "min": float(cpu_stats[1]),
-                "max": float(cpu_stats[2]),
-            }
+                # CPU metrics
+                cpu_stats = (
+                    db.query(
+                        func.avg(results_model.sysbench_cpu_events_per_second),
+                        func.min(results_model.sysbench_cpu_events_per_second),
+                        func.max(results_model.sysbench_cpu_events_per_second),
+                    )
+                    .filter(results_model.sysbench_cpu_events_per_second.is_not(None))
+                    .first()
+                )
+
+                if cpu_stats and cpu_stats[0] is not None:
+                    metrics_summary["sysbench_cpu_events_per_second"] = {
+                        "avg": float(cpu_stats[0]),
+                        "min": float(cpu_stats[1]),
+                        "max": float(cpu_stats[2])
+                    }
+            except Exception as e:
+                logger.warning(f"Error calculating metrics summary: {e}")
 
         return ResultsStats(
             total_results=total_results,
@@ -413,13 +512,39 @@ async def compare_results(
             )
 
         # Get results
-        results = (
-            db.query(ResultsCpuMem, TestRun, TestType)
-            .join(TestRun, ResultsCpuMem.test_run_id == TestRun.test_run_id)
+        # Query test runs first, then get results based on test type
+        test_runs = (
+            db.query(TestRun, TestType)
             .join(TestType, TestRun.test_type_id == TestType.test_type_id)
-            .filter(ResultsCpuMem.test_run_id.in_(test_run_id_list))
+            .filter(TestRun.test_run_id.in_(test_run_id_list))
             .all()
         )
+
+        if len(test_runs) != len(test_run_id_list):
+            raise HTTPException(
+                status_code=404,
+                detail="One or more test runs not found"
+            )
+
+        # Check that all test runs are of the same type
+        test_types = {test_type.name for _, test_type in test_runs}
+        if len(test_types) > 1:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot compare results from different test types: {test_types}"
+            )
+
+        test_type_name = list(test_types)[0]
+        results_model = get_results_model(test_type_name)
+
+        # Get results for all test runs
+        results = []
+        for test_run, test_type in test_runs:
+            result_data = db.query(results_model).filter(
+                results_model.test_run_id == test_run.test_run_id
+            ).first()
+            if result_data:
+                results.append((result_data, test_run, test_type))
 
         if len(results) != len(test_run_id_list):
             found_ids = [r[0].test_run_id for r in results]
