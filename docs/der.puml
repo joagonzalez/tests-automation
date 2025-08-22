@@ -1,0 +1,186 @@
+@startuml der
+!define TABLE(name,desc) class name as "desc" << (T,#FFAAAA) >>
+!define PK(x) <b><color:#b8861b><&key></color> x</b>
+!define FK(x) <color:#aaaaaa><&key></color> x
+!define UNIQUE(x) <color:#00AA00><&person></color> x
+!define NOT_NULL(x) <color:#0000AA>x</color>
+
+title Database Entity Relationship Diagram - Benchmark Analyzer
+caption MySQL Database Schema for Performance Test Framework
+
+' === LOOKUP TABLES ===
+TABLE(operators, "operators\n---\nLookup table for comparison operators") {
+  PK(op_id) : TINYINT
+  UNIQUE(code) : VARCHAR(8)
+  description : VARCHAR(64)
+  --
+  Examples:
+  1='lt', 2='lte', 3='eq'
+  4='neq', 5='gt', 6='gte', 7='btw'
+}
+
+TABLE(test_types, "test_types\n---\nTest type definitions") {
+  PK(test_type_id) : CHAR(36)
+  UNIQUE(name) : VARCHAR(64)
+  description : TEXT
+  --
+  Examples:
+  'cpu_latency', 'memory_bandwidth'
+}
+
+' === DIMENSION TABLES ===
+TABLE(environments, "environments\n---\nTest environment definitions") {
+  PK(id) : CHAR(36)
+  name : VARCHAR(128)
+  type : VARCHAR(32)
+  comments : TEXT
+  tools : JSON
+  env_metadata : JSON
+  --
+  Types: cloud, bare-metal, vm
+}
+
+TABLE(hw_bom, "hw_bom\n---\nHardware Bill of Materials") {
+  PK(bom_id) : CHAR(36)
+  NOT_NULL(specs) : JSON
+  --
+  Contains: CPU, Memory, Storage,
+  Network, Power specifications
+}
+
+TABLE(sw_bom, "sw_bom\n---\nSoftware Bill of Materials") {
+  PK(bom_id) : CHAR(36)
+  NOT_NULL(specs) : JSON
+  kernel_version : VARCHAR(50) [GENERATED]
+  --
+  Contains: OS, Kernel, Libraries,
+  Tools, Compiler versions
+}
+
+' === FACT TABLE ===
+TABLE(test_runs, "test_runs\n---\nMain fact table for test executions") {
+  PK(test_run_id) : CHAR(36)
+  FK(test_type_id) : CHAR(36)
+  FK(environment_id) : CHAR(36)
+  FK(hw_bom_id) : CHAR(36)
+  FK(sw_bom_id) : CHAR(36)
+  NOT_NULL(created_at) : TIMESTAMP
+  engineer : VARCHAR(64)
+  comments : TEXT
+  configuration : JSON
+}
+
+' === RESULTS TABLES ===
+TABLE(results_cpu_mem, "results_cpu_mem\n---\nCPU and Memory benchmark results") {
+  PK(FK(test_run_id)) : CHAR(36)
+  --
+  **Memory Metrics:**
+  memory_idle_latency_ns : DOUBLE
+  memory_peak_injection_bandwidth_mbs : DOUBLE
+  ramspeed_smp_bandwidth_mbs_add : DOUBLE
+  ramspeed_smp_bandwidth_mbs_copy : DOUBLE
+  sysbench_ram_memory_bandwidth_mibs : INT
+  sysbench_ram_memory_test_duration_sec : INT
+  sysbench_ram_memory_test_mode : VARCHAR(8)
+  --
+  **CPU Metrics:**
+  sysbench_cpu_events_per_second : INT
+  sysbench_cpu_duration_sec : INT
+  sysbench_cpu_test_mode : VARCHAR(16)
+}
+
+' === ACCEPTANCE CRITERIA TABLE ===
+TABLE(acceptance_criteria, "acceptance_criteria\n---\nTest acceptance thresholds") {
+  PK(id) : CHAR(36)
+  FK(test_type_id) : CHAR(36)
+  NOT_NULL(metric) : VARCHAR(64)
+  FK(op_id) : TINYINT
+  threshold_min : DOUBLE
+  threshold_max : DOUBLE
+  target_component : VARCHAR(32)
+  --
+  Components: cpu, memory, disk, network
+}
+
+' === VIEW ===
+TABLE(v_test_runs_summary, "v_test_runs_summary\n---\nSummary view for test runs") {
+  test_run_id : CHAR(36)
+  test_type_id : CHAR(36)
+  environment_id : CHAR(36)
+  hw_bom_id : CHAR(36)
+  sw_bom_id : CHAR(36)
+  created_at : TIMESTAMP
+  engineer : VARCHAR(64)
+  comments : TEXT
+  configuration : JSON
+  kernel_version : VARCHAR(50)
+  test_name : VARCHAR(64)
+  --
+  <<VIEW>>
+}
+
+' === RELATIONSHIPS ===
+
+' Test Types to Test Runs (1:N)
+test_types ||--o{ test_runs : "defines"
+
+' Environments to Test Runs (1:N)
+environments ||--o{ test_runs : "runs in"
+
+' Hardware BOM to Test Runs (1:N)
+hw_bom ||--o{ test_runs : "uses hardware"
+
+' Software BOM to Test Runs (1:N)
+sw_bom ||--o{ test_runs : "uses software"
+
+' Test Runs to Results (1:1)
+test_runs ||--|| results_cpu_mem : "produces"
+
+' Test Types to Acceptance Criteria (1:N)
+test_types ||--o{ acceptance_criteria : "has criteria"
+
+' Operators to Acceptance Criteria (1:N)
+operators ||--o{ acceptance_criteria : "defines operator"
+
+' View relationships (dashed lines for views)
+test_runs ||..|| v_test_runs_summary : "summarizes"
+sw_bom ||..|| v_test_runs_summary : "includes kernel"
+test_types ||..|| v_test_runs_summary : "includes name"
+
+' === NOTES ===
+note top of test_runs
+  **Central Fact Table**
+  - Links all dimensions
+  - Captures test execution metadata
+  - Extensible with JSON configuration
+end note
+
+note bottom of results_cpu_mem
+  **Extensible Results Architecture**
+  - Additional tables: results_io, results_network
+  - Each test type family gets own table
+  - 1:1 relationship with test_runs
+end note
+
+note right of hw_bom
+  **BOM Deduplication Issue**
+  - Same hardware specs create different IDs
+  - Consider hash-based ID generation
+  - Or implement BOM comparison logic
+end note
+
+note left of sw_bom
+  **Generated Columns**
+  - kernel_version extracted from JSON
+  - Indexed for fast queries
+  - Can add more extracted fields
+end note
+
+note bottom of acceptance_criteria
+  **Flexible Criteria System**
+  - Supports range and single value thresholds
+  - Operator-based comparisons
+  - Component-specific criteria
+end note
+
+@enduml

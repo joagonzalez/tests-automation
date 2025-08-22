@@ -1,0 +1,181 @@
+@startuml bom_relationships
+!define TABLE(name,desc) class name as "desc" << (T,#FFAAAA) >>
+!define PK(x) <b><color:#b8861b><&key></color> x</b>
+!define FK(x) <color:#aaaaaa><&key></color> x
+!define ISSUE(x) <color:#FF0000><b>x</b></color>
+
+title BOM Relationships and Deduplication Issue
+caption Hardware and Software Bill of Materials - Current vs Proposed Solution
+
+' === CURRENT PROBLEMATIC DESIGN ===
+package "Current Implementation (PROBLEMATIC)" {
+  TABLE(hw_bom_current, "hw_bom\n---\nCurrent Implementation") {
+    PK(bom_id) : CHAR(36) [UUID.uuid4()]
+    specs : JSON
+    --
+    ISSUE(PROBLEM: Same specs = Different IDs!)
+  }
+
+  TABLE(sw_bom_current, "sw_bom\n---\nCurrent Implementation") {
+    PK(bom_id) : CHAR(36) [UUID.uuid4()]
+    specs : JSON
+    kernel_version : VARCHAR(50) [GENERATED]
+    --
+    ISSUE(PROBLEM: Same specs = Different IDs!)
+  }
+
+  TABLE(test_runs_current, "test_runs\n---\nCurrent Implementation") {
+    PK(test_run_id) : CHAR(36)
+    FK(hw_bom_id) : CHAR(36)
+    FK(sw_bom_id) : CHAR(36)
+    created_at : TIMESTAMP
+    --
+    ISSUE(Multiple BOMs for same hardware!)
+  }
+}
+
+' === PROPOSED SOLUTION ===
+package "Proposed Solution (HASH-BASED)" {
+  TABLE(hw_bom_fixed, "hw_bom\n---\nHash-Based Implementation") {
+    PK(bom_id) : CHAR(36) [SHA256 of specs]
+    specs : JSON
+    specs_hash : VARCHAR(64) [UNIQUE]
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+    --
+    **Benefits:**
+    - Same specs = Same ID
+    - Natural deduplication
+    - Referential integrity maintained
+  }
+
+  TABLE(sw_bom_fixed, "sw_bom\n---\nHash-Based Implementation") {
+    PK(bom_id) : CHAR(36) [SHA256 of specs]
+    specs : JSON
+    specs_hash : VARCHAR(64) [UNIQUE]
+    kernel_version : VARCHAR(50) [GENERATED]
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+    --
+    **Benefits:**
+    - Same specs = Same ID
+    - Natural deduplication
+    - Fast lookup by hash
+  }
+
+  TABLE(test_runs_fixed, "test_runs\n---\nFixed Implementation") {
+    PK(test_run_id) : CHAR(36)
+    FK(hw_bom_id) : CHAR(36) [Hash-based]
+    FK(sw_bom_id) : CHAR(36) [Hash-based]
+    created_at : TIMESTAMP
+    --
+    **Benefits:**
+    - Single BOM per unique configuration
+    - Easier analytics and reporting
+    - Reduced storage overhead
+  }
+}
+
+' === CURRENT PROBLEM ILLUSTRATION ===
+object "Intel Xeon Gold 6230R\n128GB DDR4\nDell PowerEdge R750" as hw_config
+object "HW BOM ID: 2343fc84..." as hw_bom1
+object "HW BOM ID: 51764514..." as hw_bom2
+object "Test Run 1" as test1
+object "Test Run 2" as test2
+
+hw_config --> hw_bom1 : "Same specs\nDifferent ID!"
+hw_config --> hw_bom2 : "Same specs\nDifferent ID!"
+test1 --> hw_bom1
+test2 --> hw_bom2
+
+' === PROPOSED SOLUTION ILLUSTRATION ===
+object "Intel Xeon Gold 6230R\n128GB DDR4\nDell PowerEdge R750" as hw_config_fixed
+object "HW BOM ID: SHA256(specs)" as hw_bom_single
+object "Test Run A" as testA
+object "Test Run B" as testB
+
+hw_config_fixed --> hw_bom_single : "Same specs\nSame ID!"
+testA --> hw_bom_single
+testB --> hw_bom_single
+
+' === IMPLEMENTATION STRATEGY ===
+note as implementation
+**Implementation Strategy**
+
+1. **Add Hash Column**
+   - Add specs_hash VARCHAR(64) UNIQUE
+   - Create index on specs_hash
+
+2. **Modify BOM Creation Logic**
+   ```python
+   def create_or_get_bom(specs: dict) -> str:
+       specs_hash = hashlib.sha256(
+           json.dumps(specs, sort_keys=True).encode()
+       ).hexdigest()
+
+       existing = session.query(HwBom).filter_by(
+           specs_hash=specs_hash
+       ).first()
+
+       if existing:
+           return existing.bom_id
+
+       bom_id = str(uuid.uuid4())
+       new_bom = HwBom(
+           bom_id=bom_id,
+           specs=specs,
+           specs_hash=specs_hash
+       )
+       session.add(new_bom)
+       return bom_id
+   ```
+
+3. **Migration Strategy**
+   - Add hash column to existing tables
+   - Calculate hashes for existing records
+   - Identify and merge duplicates
+   - Update foreign key references
+end note
+
+' === ANALYTICS BENEFITS ===
+note as analytics
+**Analytics Benefits**
+
+**Before (Current)**
+- Multiple BOM records per configuration
+- Complex aggregation queries
+- Inconsistent reporting
+- Storage waste
+
+**After (Hash-Based)**
+- Single BOM record per configuration
+- Simple aggregation queries
+- Consistent reporting
+- Optimized storage
+
+**Example Query Improvement:**
+```sql
+-- Current: Complex deduplication needed
+SELECT DISTINCT JSON_EXTRACT(specs, '$.cpu.model') as cpu_model,
+       COUNT(*) as test_count
+FROM hw_bom hb
+JOIN test_runs tr ON hb.bom_id = tr.hw_bom_id
+GROUP BY JSON_EXTRACT(specs, '$.cpu.model')
+
+-- After: Direct aggregation
+SELECT JSON_EXTRACT(specs, '$.cpu.model') as cpu_model,
+       COUNT(tr.test_run_id) as test_count
+FROM hw_bom hb
+JOIN test_runs tr ON hb.bom_id = tr.hw_bom_id
+GROUP BY hb.bom_id, JSON_EXTRACT(specs, '$.cpu.model')
+```
+end note
+
+' === RELATIONSHIPS ===
+hw_bom_current ||--o{ test_runs_current : "1:N (duplicated)"
+sw_bom_current ||--o{ test_runs_current : "1:N (duplicated)"
+
+hw_bom_fixed ||--o{ test_runs_fixed : "1:N (deduplicated)"
+sw_bom_fixed ||--o{ test_runs_fixed : "1:N (deduplicated)"
+
+@enduml
