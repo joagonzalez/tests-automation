@@ -1,0 +1,141 @@
+@startuml ERD_SIMPLIFIED
+!theme plain
+skinparam class {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor Black
+}
+
+title Benchmark Analyzer - Database Entity Relationship Diagram
+subtitle Core Entities and Relationships
+
+entity "test_types" as tt {
+    * test_type_id : CHAR(36) <<PK>>
+    --
+    * name : VARCHAR(64) <<UK>>
+    description : TEXT
+}
+
+entity "environments" as env {
+    * id : CHAR(36) <<PK>>
+    --
+    name : VARCHAR(128)
+    type : VARCHAR(32)
+    tools : JSON
+    env_metadata : JSON
+}
+
+entity "hw_bom" as hw {
+    * bom_id : CHAR(36) <<PK>>
+    --
+    * specs : JSON
+    * specs_hash : VARCHAR(64) <<UK>>
+}
+
+entity "sw_bom" as sw {
+    * bom_id : CHAR(36) <<PK>>
+    --
+    * specs : JSON
+    * specs_hash : VARCHAR(64) <<UK>>
+    kernel_version : VARCHAR(50) <<Generated>>
+}
+
+entity "test_runs" as tr {
+    * test_run_id : CHAR(36) <<PK>>
+    --
+    * test_type_id : CHAR(36) <<FK>>
+    environment_id : CHAR(36) <<FK>>
+    hw_bom_id : CHAR(36) <<FK>>
+    sw_bom_id : CHAR(36) <<FK>>
+    * created_at : TIMESTAMP
+    engineer : VARCHAR(64)
+    comments : TEXT
+    configuration : JSON
+}
+
+entity "results_cpu_mem" as rcm {
+    * test_run_id : CHAR(36) <<PK,FK>>
+    --
+    memory_idle_latency_ns : DOUBLE
+    memory_peak_injection_bandwidth_mbs : DOUBLE
+    ramspeed_smp_bandwidth_mbs_add : DOUBLE
+    ramspeed_smp_bandwidth_mbs_copy : DOUBLE
+    sysbench_ram_memory_bandwidth_mibs : INT
+    sysbench_cpu_events_per_second : INT
+    sysbench_cpu_duration_sec : INT
+}
+
+entity "results_network_perf" as rnp {
+    * test_run_id : CHAR(36) <<PK,FK>>
+    --
+    tcp_latency_avg_ms : DOUBLE
+    tcp_throughput_mbps : DOUBLE
+    udp_latency_avg_ms : DOUBLE
+    udp_throughput_mbps : DOUBLE
+    download_bandwidth_mbps : DOUBLE
+    upload_bandwidth_mbps : DOUBLE
+    connection_establishment_time_ms : DOUBLE
+    connections_per_second : INT
+    packet_loss_percent : DOUBLE
+    test_duration_sec : INT
+    test_tool : VARCHAR(32)
+}
+
+entity "acceptance_criteria" as ac {
+    * id : CHAR(36) <<PK>>
+    --
+    * test_type_id : CHAR(36) <<FK>>
+    * metric : VARCHAR(64)
+    * op_id : TINYINT <<FK>>
+    threshold_min : DOUBLE
+    threshold_max : DOUBLE
+    target_component : VARCHAR(32)
+}
+
+entity "operators" as op {
+    * op_id : TINYINT <<PK>>
+    --
+    * code : VARCHAR(8) <<UK>>
+    description : VARCHAR(64)
+}
+
+' Core Relationships
+tt ||--o{ tr : "defines"
+env ||--o{ tr : "runs in"
+hw ||--o{ tr : "hardware config"
+sw ||--o{ tr : "software config"
+
+tr ||--o| rcm : "cpu/memory results"
+tr ||--o| rnp : "network results"
+
+tt ||--o{ ac : "has criteria"
+op ||--o{ ac : "comparison operator"
+
+' Layout
+tt -down-> tr
+env -down-> tr
+hw -down-> tr
+sw -down-> tr
+tr -down-> rcm
+tr -down-> rnp
+tt -right-> ac
+op -up-> ac
+
+note as n1
+**Key Design Principles:**
+• test_runs is the central fact table
+• Results tables have 1:1 relationship with test_runs
+• Optional foreign keys for flexibility
+• Hash-based BOM deduplication
+• JSON fields for extensibility
+end note
+
+note as n2
+**Result Table Strategy:**
+• Each test type family gets dedicated table
+• Mutually exclusive - one test_run has results in only one table
+• Cascade delete maintains referential integrity
+• Optimized for specific query patterns
+end note
+
+@enduml

@@ -1,0 +1,253 @@
+@startuml ERD_CURRENT
+!define TABLE(name,desc) class name as "desc" << (T,#FFAAAA) >>
+!define PK(x) <b><color:#b8861b><&key></color> x</b>
+!define FK(x) <color:#aaaaaa><&key></color> x
+!define UNIQUE(x) <color:#00AA00><&person></color> x
+!define NOT_NULL(x) <color:#0000AA>x</color>
+
+title Current Database Entity Relationship Diagram - Benchmark Analyzer
+caption MySQL Database Schema for Performance Test Framework (Updated)
+
+' === LOOKUP TABLES ===
+TABLE(operators, "operators\n---\nLookup table for comparison operators") {
+  PK(op_id) : TINYINT
+  UNIQUE(code) : VARCHAR(8)
+  description : VARCHAR(64)
+  --
+  Examples:
+  1='lt', 2='lte', 3='eq'
+  4='neq', 5='gt', 6='gte', 7='btw'
+}
+
+TABLE(test_types, "test_types\n---\nTest type definitions") {
+  PK(test_type_id) : CHAR(36)
+  UNIQUE(name) : VARCHAR(64)
+  description : TEXT
+  --
+  Examples:
+  'cpu_mem', 'network_perf'
+}
+
+' === DIMENSION TABLES ===
+TABLE(environments, "environments\n---\nTest environment definitions") {
+  PK(id) : CHAR(36)
+  name : VARCHAR(128)
+  type : VARCHAR(32)
+  comments : TEXT
+  tools : JSON
+  env_metadata : JSON
+  --
+  Types: cloud, bare-metal, vm
+}
+
+TABLE(hw_bom, "hw_bom\n---\nHardware Bill of Materials") {
+  PK(bom_id) : CHAR(36)
+  NOT_NULL(specs) : JSON
+  UNIQUE(specs_hash) : VARCHAR(64)
+  --
+  Contains: CPU, Memory, Storage,
+  Network, Power specifications
+  Hash-based deduplication
+}
+
+TABLE(sw_bom, "sw_bom\n---\nSoftware Bill of Materials") {
+  PK(bom_id) : CHAR(36)
+  NOT_NULL(specs) : JSON
+  UNIQUE(specs_hash) : VARCHAR(64)
+  kernel_version : VARCHAR(50) [GENERATED]
+  --
+  Contains: OS, Kernel, Libraries,
+  Tools, Compiler versions
+  Hash-based deduplication
+}
+
+' === FACT TABLE ===
+TABLE(test_runs, "test_runs\n---\nMain fact table for test executions") {
+  PK(test_run_id) : CHAR(36)
+  FK(test_type_id) : CHAR(36)
+  FK(environment_id) : CHAR(36) [OPTIONAL]
+  FK(hw_bom_id) : CHAR(36) [OPTIONAL]
+  FK(sw_bom_id) : CHAR(36) [OPTIONAL]
+  NOT_NULL(created_at) : TIMESTAMP
+  engineer : VARCHAR(64)
+  comments : TEXT
+  configuration : JSON
+}
+
+' === RESULTS TABLES ===
+TABLE(results_cpu_mem, "results_cpu_mem\n---\nCPU and Memory benchmark results") {
+  PK(FK(test_run_id)) : CHAR(36) [CASCADE DELETE]
+  --
+  **Memory Metrics:**
+  memory_idle_latency_ns : DOUBLE
+  memory_peak_injection_bandwidth_mbs : DOUBLE
+  ramspeed_smp_bandwidth_mbs_add : DOUBLE
+  ramspeed_smp_bandwidth_mbs_copy : DOUBLE
+  sysbench_ram_memory_bandwidth_mibs : INT
+  sysbench_ram_memory_test_duration_sec : INT
+  sysbench_ram_memory_test_mode : VARCHAR(8)
+  --
+  **CPU Metrics:**
+  sysbench_cpu_events_per_second : INT
+  sysbench_cpu_duration_sec : INT
+  sysbench_cpu_test_mode : VARCHAR(16)
+}
+
+TABLE(results_network_perf, "results_network_perf\n---\nNetwork Performance benchmark results") {
+  PK(FK(test_run_id)) : CHAR(36) [CASCADE DELETE]
+  --
+  **Latency Metrics (ms):**
+  tcp_latency_avg_ms : DOUBLE
+  tcp_latency_min_ms : DOUBLE
+  tcp_latency_max_ms : DOUBLE
+  udp_latency_avg_ms : DOUBLE
+  udp_latency_min_ms : DOUBLE
+  udp_latency_max_ms : DOUBLE
+  --
+  **Throughput Metrics (Mbps):**
+  tcp_throughput_mbps : DOUBLE
+  udp_throughput_mbps : DOUBLE
+  download_bandwidth_mbps : DOUBLE
+  upload_bandwidth_mbps : DOUBLE
+  --
+  **Connection & Quality:**
+  connection_establishment_time_ms : DOUBLE
+  connections_per_second : INT
+  packet_loss_percent : DOUBLE
+  jitter_ms : DOUBLE
+  --
+  **Test Configuration:**
+  test_duration_sec : INT
+  concurrent_connections : INT
+  packet_size_bytes : INT
+  test_tool : VARCHAR(32)
+}
+
+' === ACCEPTANCE CRITERIA TABLE ===
+TABLE(acceptance_criteria, "acceptance_criteria\n---\nTest acceptance thresholds") {
+  PK(id) : CHAR(36)
+  FK(test_type_id) : CHAR(36)
+  NOT_NULL(metric) : VARCHAR(64)
+  FK(op_id) : TINYINT
+  threshold_min : DOUBLE
+  threshold_max : DOUBLE
+  target_component : VARCHAR(32)
+  --
+  Components: cpu, memory, disk, network
+}
+
+' === VIEW ===
+TABLE(v_test_runs_summary, "v_test_runs_summary\n---\nSummary view for test runs") {
+  test_run_id : CHAR(36)
+  test_type_id : CHAR(36)
+  environment_id : CHAR(36)
+  hw_bom_id : CHAR(36)
+  sw_bom_id : CHAR(36)
+  created_at : TIMESTAMP
+  engineer : VARCHAR(64)
+  comments : TEXT
+  configuration : JSON
+  kernel_version : VARCHAR(50)
+  test_name : VARCHAR(64)
+  --
+  <<VIEW>>
+}
+
+' === RELATIONSHIPS ===
+
+' Test Types to Test Runs (1:N)
+test_types ||--o{ test_runs : "defines"
+
+' Environments to Test Runs (1:N) - OPTIONAL
+environments ||--o{ test_runs : "runs in\n[optional]"
+
+' Hardware BOM to Test Runs (1:N) - OPTIONAL
+hw_bom ||--o{ test_runs : "uses hardware\n[optional]"
+
+' Software BOM to Test Runs (1:N) - OPTIONAL
+sw_bom ||--o{ test_runs : "uses software\n[optional]"
+
+' Test Runs to Results (1:0..1) - One test run can have results in different tables
+test_runs ||--o| results_cpu_mem : "produces\ncpu_mem results"
+test_runs ||--o| results_network_perf : "produces\nnetwork_perf results"
+
+' Test Types to Acceptance Criteria (1:N)
+test_types ||--o{ acceptance_criteria : "has criteria"
+
+' Operators to Acceptance Criteria (1:N)
+operators ||--o{ acceptance_criteria : "defines operator"
+
+' View relationships (dashed lines for views)
+test_runs ||..|| v_test_runs_summary : "summarizes"
+sw_bom ||..|| v_test_runs_summary : "includes kernel"
+test_types ||..|| v_test_runs_summary : "includes name"
+
+' === LAYOUT HINTS ===
+test_types -down-> test_runs
+environments -down-> test_runs
+hw_bom -down-> test_runs
+sw_bom -down-> test_runs
+test_runs -down-> results_cpu_mem
+test_runs -down-> results_network_perf
+
+' === NOTES ===
+note top of test_runs
+  **Central Fact Table**
+  - Links all dimensions
+  - Optional foreign keys for flexibility
+  - Captures test execution metadata
+  - Extensible with JSON configuration
+  - Created timestamp with index
+end note
+
+note bottom of results_cpu_mem
+  **Extensible Results Architecture**
+  - Each test type family gets own table
+  - 1:0..1 relationship with test_runs
+  - Cascade delete for data consistency
+  - Results tables are mutually exclusive per test run
+end note
+
+note bottom of results_network_perf
+  **Network Performance Metrics**
+  - Comprehensive latency measurements
+  - Throughput in multiple protocols
+  - Connection quality metrics
+  - Test configuration metadata
+  - Supports iperf3, netperf, ping tools
+end note
+
+note right of hw_bom
+  **BOM Deduplication**
+  - Hash-based specs deduplication
+  - SHA256 hash of normalized JSON
+  - Prevents duplicate hardware configs
+  - Unique constraint on specs_hash
+end note
+
+note left of sw_bom
+  **Generated Columns & Indexing**
+  - kernel_version extracted from JSON
+  - Indexed for fast kernel-based queries
+  - Hash-based deduplication like hw_bom
+  - Can add more extracted fields as needed
+end note
+
+note bottom of acceptance_criteria
+  **Flexible Criteria System**
+  - Supports range and single value thresholds
+  - Operator-based comparisons (lt, gt, btw, etc.)
+  - Component-specific criteria
+  - Links to any test type
+  - Extensible for new test types
+end note
+
+note top of v_test_runs_summary
+  **Performance View**
+  - Denormalized for fast queries
+  - Includes frequently accessed fields
+  - Pre-joins common lookups
+  - Read-only view for reporting
+end note
+
+@enduml
