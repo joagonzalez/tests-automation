@@ -1,27 +1,28 @@
-# 🔧 Benchmark Analyzer Framework
+# Benchmark Analyzer Framework
 
 A comprehensive framework for analyzing hardware and software benchmark results with automated parsing, validation, storage, and visualization capabilities.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [🎯 Overview](#-overview)
-- [✨ Features](#-features)
-- [🏗️ Architecture](#-architecture)
-- [🚀 Quick Start](#-quick-start)
-- [📦 Installation](#-installation)
-- [💻 Usage](#-usage)
-- [🧪 Test Development Guide](#-test-development-guide)
-- [📚 API Documentation](#-api-documentation)
-- [🛠️ Development](#-development)
-- [⚙️ Configuration](#-configuration)
-- [🧪 Testing](#-testing)
-- [🤝 Contributing](#-contributing)
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Documentation](#documentation)
+- [Test Development Guide](#test-development-guide)
+- [API Documentation](#api-documentation)
+- [Development](#development)
+- [Configuration](#configuration)
+- [Testing](#testing)
+- [Contributing](#contributing)
 
 ---
 
-## 🎯 Overview
+## Overview
 
 The Benchmark Analyzer Framework provides a complete solution for managing benchmark test results across different hardware and software configurations. It automatically parses test outputs, validates against schemas, stores in a database, and provides rich visualization and analysis capabilities.
 
@@ -34,16 +35,16 @@ The Benchmark Analyzer Framework provides a complete solution for managing bench
 
 ---
 
-## ✨ Features
+## Features
 
 ### Core Features
-- **🔄 Automated Parsing**: Support for JSON, CSV, and ZIP package formats
-- **✅ Schema Validation**: JSON Schema-based validation for data integrity
-- **💾 Database Storage**: MySQL backend with optimized schema design
-- **🌐 REST API**: Full-featured API for programmatic access
-- **📊 Dashboard**: Interactive Grafana dashboards for visualization
-- **🐳 Docker Support**: Complete containerized deployment
-- **🛡️ Environment Isolation**: Environment-based configuration management
+- **Automated Parsing**: Support for JSON, CSV, and ZIP package formats
+- **Schema Validation**: JSON Schema-based validation for data integrity
+- **Database Storage**: MySQL backend with optimized schema design
+- **REST API**: Full-featured API for programmatic access
+- **Dashboard**: Interactive Grafana dashboards for visualization
+- **Docker Support**: Complete containerized deployment
+- **Environment Isolation**: Environment-based configuration management
 
 ### Test Type Support
 - **CPU/Memory Tests**: Sysbench, RAMspeed, custom latency tests
@@ -58,7 +59,7 @@ The Benchmark Analyzer Framework provides a complete solution for managing bench
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -93,7 +94,7 @@ The Benchmark Analyzer Framework provides a complete solution for managing bench
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.12+ with [uv](https://github.com/astral-sh/uv) package manager
@@ -150,7 +151,7 @@ benchmark-analyzer import-results \
 
 ---
 
-## 💻 Usage
+## Usage
 
 ### CLI Usage
 
@@ -251,7 +252,44 @@ curl -X POST "http://localhost:8000/api/v1/test-runs/upload" \
 
 ---
 
-## 🧪 Test Development Guide
+## Documentation
+
+Comprehensive documentation is available to help you understand and extend the Benchmark Analyzer Framework.
+
+### Architecture & Design
+- **[CLI & API Architecture](docs/CLI_API_ARCHITECTURE.md)** - Complete overview of how the CLI interacts with the API for test results processing, including ZIP file handling and current vs alternative approaches
+- **[Database Design](docs/database_design.md)** - Database schema, relationships, and design decisions
+- **[Data Flow Workflow](docs/WORKFLOW.md)** - Detailed step-by-step data loading and processing workflow
+
+### Developer Guides
+- **[Adding New Test Types](docs/guides/ADDING_NEW_TEST_TYPE.md)** - Complete step-by-step guide for implementing new test types from scratch
+- **[Network Performance Implementation](docs/guides/NETWORK_PERF_IMPLEMENTATION.md)** - Real-world case study showing complete test type implementation
+
+### Visual Documentation
+- **[Component Diagrams](docs/components.puml)** - PlantUML diagrams showing system components
+- **[Database Relationships](docs/bom_relationships.puml)** - Entity relationship diagrams
+- **[Sequence Diagrams](docs/benchmark_analyzer_sequence.puml)** - Process flow diagrams
+
+<img src="docs/diagrams/DER_complete.png" />
+
+
+### Quick Navigation
+
+**New to the project?**
+1. Start with [CLI & API Architecture](docs/CLI_API_ARCHITECTURE.md)
+2. Read [Data Flow Workflow](docs/WORKFLOW.md)
+3. Try [Adding New Test Types](docs/guides/ADDING_NEW_TEST_TYPE.md)
+
+**Need to implement something?**
+- Adding a test type → [Adding New Test Types](docs/guides/ADDING_NEW_TEST_TYPE.md)
+- Understanding data flow → [Data Flow Workflow](docs/WORKFLOW.md)
+- Troubleshooting uploads → [CLI & API Architecture](docs/CLI_API_ARCHITECTURE.md)
+
+**For complete documentation index:** → [Documentation Directory](docs/README.md)
+
+---
+
+## Test Development Guide
 
 ### Overview
 
@@ -261,6 +299,11 @@ The framework uses a structured approach for defining, validating, and processin
 2. **Parser Class**: Handles parsing of test result files
 3. **Database Model**: Stores structured results (optional, for complex types)
 4. **Validation Rules**: Ensures data integrity and completeness
+
+> **For detailed implementation guides, see:**
+> - **[Complete Test Type Implementation Guide](docs/guides/ADDING_NEW_TEST_TYPE.md)** - Step-by-step instructions with code examples
+> - **[Network Performance Case Study](docs/guides/NETWORK_PERF_IMPLEMENTATION.md)** - Real implementation example
+> - **[Data Flow Workflow](docs/WORKFLOW.md)** - Understanding the complete data processing pipeline
 
 ### Creating a New Test Type
 
@@ -612,7 +655,7 @@ benchmark-analyzer query test-runs --type network_latency
 
 ---
 
-## 📚 API Documentation
+## API Documentation
 
 ### REST API Endpoints
 
@@ -665,7 +708,7 @@ benchmark-analyzer query test-runs --type network_latency
 
 ---
 
-## 🛠️ Development
+## Development
 
 ### Development Setup
 
@@ -793,7 +836,7 @@ benchmark-analyzer/
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -916,198 +959,12 @@ software:
 
 ---
 
-## 🧪 Testing
-
-### Running Tests
-
-```bash
-# Run all tests
-make test
-
-# Run with coverage
-make test-coverage
-
-# Run specific test categories
-make test-unit          # Unit tests only
-make test-integration   # Integration tests only
-
-# Run specific test file
-uv run pytest tests/unit/test_config.py -v
-
-# Run with specific markers
-uv run pytest -m "unit" -v
-uv run pytest -m "database" -v
-uv run pytest -m "slow" -v
-
-# Run tests in watch mode
-make test-watch
-```
-
-### Test Structure
-
-```
-tests/
-├── conftest.py              # Shared fixtures and configuration
-├── unit/                    # Unit tests
-│   ├── core/
-│   │   ├── test_parser.py
-│   │   ├── test_validator.py
-│   │   └── test_loader.py
-│   ├── db/
-│   │   ├── test_models.py
-│   │   └── test_connector.py
-│   └── api/
-│       ├── test_endpoints.py
-│       └── test_services.py
-├── integration/             # Integration tests
-│   ├── test_end_to_end.py
-│   ├── test_database_integration.py
-│   └── test_api_integration.py
-└── fixtures/               # Test data and fixtures
-    ├── sample_data/
-    ├── schemas/
-    └── environments/
-```
-
-### Test Configuration
-
-Tests use pytest with custom configuration and fixtures:
-
-```python
-# tests/conftest.py
-import pytest
-from benchmark_analyzer.config import Config
-from benchmark_analyzer.db.connector import DatabaseManager
-
-@pytest.fixture
-def test_config():
-    """Test configuration with in-memory database."""
-    return Config(".env.test")
-
-@pytest.fixture
-def db_manager(test_config):
-    """Database manager for testing."""
-    manager = DatabaseManager(test_config)
-    manager.initialize_tables()
-    yield manager
-    manager.clean_database()
-
-@pytest.fixture
-def sample_cpu_mem_data():
-    """Sample CPU/Memory test data."""
-    return {
-        "test_name": "cpu_mem_test_001",
-        "timestamp": "2024-01-15T14:30:00Z",
-        "sysbench_cpu_events_per_second": 15000,
-        "memory_idle_latency_ns": 120.5
-    }
-```
-
-### Writing Tests
-
-Example test implementation:
-
-```python
-# tests/unit/core/test_parser.py
-import pytest
-from pathlib import Path
-from benchmark_analyzer.core.parser import ParserRegistry, CpuMemParser
-
-class TestCpuMemParser:
-    """Test CPU/Memory parser functionality."""
-    
-    def test_parse_valid_json(self, tmp_path):
-        """Test parsing valid JSON data."""
-        # Create test file
-        test_data = {
-            "test_name": "test_001",
-            "timestamp": "2024-01-15T14:30:00Z",
-            "sysbench_cpu_events_per_second": 15000
-        }
-        
-        test_file = tmp_path / "test.json"
-        test_file.write_text(json.dumps(test_data))
-        
-        # Parse and validate
-        parser = CpuMemParser()
-        result = parser.parse_file(test_file)
-        
-        assert result["test_name"] == "test_001"
-        assert result["sysbench_cpu_events_per_second"] == 15000
-    
-    @pytest.mark.integration
-    def test_database_integration(self, db_manager, sample_cpu_mem_data):
-        """Test end-to-end parsing and storage."""
-        # Test implementation here
-        pass
-```
+## Testing
+TBD
 
 ---
 
-## 🤝 Contributing
-
-### Development Workflow
-
-1. **Fork and Clone**
-   ```bash
-   git clone https://github.com/yourusername/benchmark-analyzer.git
-   cd benchmark-analyzer
-   ```
-
-2. **Set Up Development Environment**
-   ```bash
-   make setup
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. **Create Feature Branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-4. **Make Changes and Test**
-   ```bash
-   # Make your changes
-   make qa              # Run all quality checks
-   make test-coverage   # Ensure tests pass with coverage
-   ```
-
-5. **Commit and Push**
-   ```bash
-   git add .
-   git commit -m "feat: add your feature description"
-   git push origin feature/your-feature-name
-   ```
-
-6. **Create Pull Request**
-   - Ensure CI checks pass
-   - Include comprehensive description
-   - Add tests for new functionality
-   - Update documentation as needed
-
-### Code Style
-
-- **Python**: Follow PEP 8, enforced by `ruff`
-- **Type Hints**: Required for all public APIs
-- **Docstrings**: Google-style docstrings for all public functions
-- **Testing**: Maintain >90% test coverage
-- **Commits**: Follow conventional commit messages
-
-### Commit Messages
-
-Use conventional commit format:
-```
-feat: add new network latency parser
-fix: resolve database connection timeout issue
-docs: update API documentation for new endpoints
-test: add integration tests for parser system
-refactor: simplify configuration loading logic
-```
-
----
-
-## 📝 Changelog
+## Changelog
 
 ### [0.1.0] - 2024-01-15
 
@@ -1130,28 +987,7 @@ refactor: simplify configuration loading logic
 #### Infrastructure
 - **MySQL 8.0**: Primary database with performance optimizations
 - **Grafana**: Visualization and monitoring dashboards
-- **Redis**: Caching layer for API performance
-- **Nginx**: Production-ready reverse proxy
-
 ---
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🆘 Support
-
-### Documentation
-- **API Docs**: http://localhost:8000/docs (when running)
-- **Schema Reference**: See `benchmark_analyzer/contracts/` directory
-- **Examples**: Check `examples/` directory for sample data and configurations
-
-### Getting Help
-- **Issues**: Report bugs and request features via GitHub Issues
-- **Discussions**: Join community discussions for questions and ideas
-- **Contributing**: See [Contributing](#-contributing) section for development guidelines
 
 ### Troubleshooting
 
@@ -1201,24 +1037,6 @@ benchmark-analyzer query test-types
 # Check parser registration in core/parser.py
 # Ensure ParserRegistry.register() is called
 ```
-
-#### Performance Optimization
-
-**Large Dataset Import**
-- Use batch processing for large ZIP files
-- Consider database indexing for frequent queries
-- Monitor memory usage during import operations
-
-**API Performance**
-- Enable Redis caching in production
-- Use pagination for large result sets
-- Implement database connection pooling
-
-**Dashboard Performance**  
-- Limit data ranges for visualization
-- Use aggregated views for historical data
-- Implement data sampling for large datasets
-
 ---
 
 *For more detailed information, please refer to the individual component documentation in the `docs/` directory.*
